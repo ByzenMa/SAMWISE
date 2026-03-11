@@ -58,7 +58,7 @@ def get_args_parser():
     # 'all': using the three ref datasets for pretraining
 
     parser.add_argument('--dataset_file', default='ytvos', type=str,
-                        help="Dataset to use: ['ytvos', 'davis', 'refcoco', 'refcoco+', 'refcocog', 'all']")
+                        help="Dataset to use: ['ytvos', 'davis', 'mevis', 'crtrack_test', 'refcoco', 'refcoco+', 'refcocog', 'all']")
     parser.add_argument('--coco_path', type=str, default='data/coco',
                         help="Path to COCO dataset")
     parser.add_argument('--ytvos_path', type=str, default='data/ref-youtube-vos',
@@ -67,6 +67,8 @@ def get_args_parser():
                         help="Path to DAVIS dataset")
     parser.add_argument('--mevis_path', type=str, default='data/MeViS_release',
                         help="Path to MeViS dataset")
+    parser.add_argument('--crtrack_path', type=str, default='data/CRTrack_test',
+                        help="Path to CRTrack_test dataset")
     parser.add_argument('--max_size', default=1024, type=int,
                         help="Frame size for preprocessing")
     parser.add_argument('--augm_resize', default=False, action='store_true',

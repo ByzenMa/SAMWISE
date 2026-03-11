@@ -1,0 +1,12 @@
+0: A person with a black beanie, in a black coat, dark gray trousers, black shoes, holding a bottle.
+1: A person in a gray hooded coat and black shorts, red shoes.
+2: A person in a light gray sweater, black trousers, white shoes, holding a board.
+3: A person in a black hooded sweatshirt, black joggers, two-tone sneakers, holding a bottle.
+4: A person with a black cap, in a white hooded sweatshirt, black trousers, two-tone sneakers, holding a phone.
+5: A person with a dark cap, in a dark coat with red accents, dark trousers, dark shoes, holding an object.
+6: A person with a black beanie, in a dark coat, dark trousers, dark shoes, carrying a shoulder bag.
+7: A person with a dark head covering, in a beige coat, dark trousers, dark shoes, holding a box.
+8: A person in a white T-shirt, black trousers, dark shoes, holding a box, beside a vehicle.
+9: A person on a scooter, in a black coat, dark trousers, holding a cushion, wearing a black helmet.
+10: A person in a pink vest, dark trousers, light shoes, carrying a light bag.
+11: A person with a dark head covering, in a dark coat with a light band, dark trousers, holding a yellow ball.

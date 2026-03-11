@@ -1,0 +1,66 @@
+A person on a scooter.: 0,15,21
+A person in a dark coat.: 0,2,3,4,6,7,11,12,13,14,15,17,18,19,21,22,23,24,25
+A person in dark trousers.: 0,2,3,4,6,7,9,10,11,12,13,14,15,16,17,18,19,21,22,23,24,25
+A person holding a light-colored object.: 0,3,6,11,12,17,18,19,21,22,24
+A person holding a light-colored rectangular object.: 6,11,12,17,22
+A person with a hood.: 3,7,10
+A person in a dark hooded coat.: 3,7
+A person in a black hooded coat.: 7
+A person in black trousers with white stripes.: 7,10
+A person in dark sneakers.: 7
+A person holding a pinkish-red object.: 7
+A person in a white top.: 9
+A person in white shoes.: 9
+A person holding a yellow soccer ball.: 9
+A person in a white hooded sweatshirt.: 10
+A person in white sneakers.: 10
+A person holding a red can.: 10
+A person with a black beanie.: 11
+A person in dark gray trousers.: 11
+A person with a light-colored rounded headwear.: 12
+A person in a yellow coat.: 13,23
+A person on a motorcycle.: 14
+A person in a red coat with black trim.: 14
+A person in a beige vest.: 15
+A person in a white T-shirt.: 16
+A person with dark headwear.: 17
+A person with dark rounded headwear.: 18,19,25
+A person carrying a light pink bag.: 19
+A person carrying a pink backpack.: 25
+A person with a yellow hat.: 23
+A person with a dark hat.: 24
+A person in a dark blue coat.: 21
+A person holding a dark elongated item.: 4
+A person holding a white bag.: 18
+A person in a light olive coat.: 2
+A person in a black coat.: 7,11
+A person in a red helmet.: 3
+A person wearing a black coat and black trousers.: 7
+A person wearing a black coat and dark gray trousers.: 11
+A person wearing a white top and black trousers.: 9
+A person wearing a white top and black trousers and white shoes.: 9
+A person wearing a white hooded sweatshirt and black trousers with white stripes and white sneakers.: 10
+A person wearing a dark coat and dark trousers.: 0,2,3,4,6,7,11,12,13,14,15,17,18,19,21,22,24,25
+A person wearing a dark coat and dark trousers and holding a light-colored object.: 0,3,6,11,12,17,18,19,21,22,24
+A person wearing a dark coat and dark trousers and holding a light-colored rectangular object.: 6,11,12,17,22
+A person wearing a dark coat and dark trousers and holding a dark elongated item.: 4
+A person wearing a dark coat and dark trousers and holding a white bag.: 18
+A person wearing a dark coat and dark trousers and carrying a light pink bag.: 19
+A person wearing a dark coat and dark trousers and carrying a pink backpack.: 25
+A person wearing a yellow coat and dark trousers.: 13,23
+A person wearing a yellow coat and dark trousers and with a yellow hat.: 23
+A person wearing a red coat with black trim and dark trousers.: 14
+A person wearing a beige vest and dark trousers.: 15
+A person wearing a white T-shirt and black trousers and white sneakers.: 16
+A person wearing a light olive coat and dark trousers.: 2
+A person wearing a dark hooded coat and dark trousers.: 3
+A person wearing a black hooded coat and black trousers with white stripes and dark sneakers.: 7
+A person wearing a white hooded sweatshirt and black trousers with white stripes.: 10
+A person wearing a black coat and dark gray trousers and holding a light-colored rectangular object.: 11
+A person wearing a dark coat and dark trousers and with dark rounded headwear.: 18,19,25
+A person wearing a dark coat and dark trousers and with a light-colored rounded headwear.: 12
+A person wearing a dark coat and dark trousers and with a black beanie.: 11
+A person wearing a dark coat and dark trousers and with a yellow hat.: 23
+A person wearing a dark coat and dark trousers and with a dark hat.: 24
+A person wearing a dark blue coat and dark trousers and holding a light-colored object.: 21
+A person wearing a dark coat and dark trousers and holding a reddish-brown object.: 0

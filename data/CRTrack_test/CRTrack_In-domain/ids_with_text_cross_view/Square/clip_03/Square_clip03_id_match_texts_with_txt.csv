@@ -1,0 +1,25 @@
+id,view1,view2,view3,view1_txt,view2_txt,view3_txt
+0,0,1,8,"A person on a scooter, in a dark coat, dark trousers, holding a reddish-brown object.",A person in a beige coat and dark gray trousers.,Unclear.
+1,1,1,8,Unclear.,A person in a beige coat and dark gray trousers.,Unclear.
+2,2,1,8,"A person with a light-colored hat, in a light olive coat, dark trousers.",A person in a beige coat and dark gray trousers.,Unclear.
+3,3,1,8,"A person with a hood, in a dark hooded coat, dark trousers, holding a light-colored item.",A person in a beige coat and dark gray trousers.,Unclear.
+4,4,1,8,"A person in a dark coat, dark trousers, holding a dark elongated item.",A person in a beige coat and dark gray trousers.,Unclear.
+5,6,0,8,"A person in a dark coat, dark trousers, holding a light-colored rectangular object.",A person in a white top and black trousers.,Unclear.
+6,7,3,7,"A person in a black hooded coat, black trousers with white stripes, dark sneakers, holding a pinkish-red object.","A person in a black hooded coat and black trousers, holding a red-capped bottle.","A person with a black head covering, in a black coat and dark trousers."
+7,9,4,4,"A person in a white top, black trousers, white shoes, holding a yellow soccer ball.","A person in a light beige top and black trousers, holding a phone.","A person with a black cap, in a light gray sweater and black trousers."
+8,10,2,2,"A person in a white hooded sweatshirt, black trousers with white stripes, white sneakers, holding a red can.","A person in a white hoodie and black track pants, holding a red-and-white bottle.","A person on a scooter, in a white top and black trousers."
+9,11,6,0,"A person with a black beanie, in a black coat, dark gray trousers, holding a light-colored rectangular object.","A person in a black coat and gray trousers, holding an orange-capped bottle.","A person with a black beanie, in a black coat and gray trousers."
+10,12,1,8,"A person with a light-colored rounded headwear, in a dark coat, dark trousers, holding a light-colored rectangular object.",A person in a beige coat and dark gray trousers.,Unclear.
+11,13,1,6,"A person in a yellow coat, dark trousers, dark shoes.",A person in a beige coat and dark gray trousers.,"A person with a dark head covering, in a bright yellow coat and dark trousers."
+12,14,1,2,"A person on a motorcycle, in a red coat with black trim, dark trousers.",A person in a beige coat and dark gray trousers.,"A person on a scooter, in a white top and black trousers."
+13,15,1,5,"A person on a scooter, in a beige vest, dark trousers.",A person in a beige coat and dark gray trousers.,"A person in a striped beige jacket and blue jeans, holding a brown box."
+14,16,0,2,"A person in a white T-shirt, black trousers, white sneakers.",A person in a white top and black trousers.,"A person on a scooter, in a white top and black trousers."
+15,17,1,8,"A person with dark headwear, in a dark coat, dark trousers, holding a light-colored rectangular object.",A person in a beige coat and dark gray trousers.,Unclear.
+16,18,1,7,"A person with dark rounded headwear, in a dark coat, dark trousers, holding a white bag.",A person in a beige coat and dark gray trousers.,"A person with a black head covering, in a black coat and dark trousers."
+17,19,2,3,"A person with dark rounded headwear, in a dark coat, dark trousers, carrying a light pink bag.","A person in a white hoodie and black track pants, holding a red-and-white bottle.",A person in a light-gray coat and dark trousers.
+18,20,1,8,Unclear.,A person in a beige coat and dark gray trousers.,Unclear.
+19,21,1,8,"A person on a scooter, in a dark blue coat, dark trousers, holding a light-colored object.",A person in a beige coat and dark gray trousers.,Unclear.
+20,22,1,5,"A person in a dark coat, dark trousers, holding a light-colored rectangular object.",A person in a beige coat and dark gray trousers.,"A person in a striped beige jacket and blue jeans, holding a brown box."
+21,23,1,8,"A person with a yellow hat, in a yellow coat, dark trousers.",A person in a beige coat and dark gray trousers.,Unclear.
+22,24,1,8,"A person with a dark hat, in a dark coat, dark trousers, holding a light-colored object.",A person in a beige coat and dark gray trousers.,Unclear.
+23,25,4,8,"A person with dark rounded headwear, in a dark coat, dark trousers, carrying a pink backpack.","A person in a light beige top and black trousers, holding a phone.",Unclear.

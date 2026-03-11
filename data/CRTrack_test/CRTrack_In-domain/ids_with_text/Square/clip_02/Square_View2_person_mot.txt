@@ -1,0 +1,91 @@
+A person with a dark cap.: 0
+A person with a black cap.: 1,3
+A person with dark headwear.: 4,5,9
+A person in a light top.: 0
+A person in a white T-shirt.: 1
+A person in a white hoodie.: 3
+A person in a light coat.: 4
+A person in a striped coat.: 5
+A person in a dark hooded coat.: 9
+A person in a black coat.: 2,6
+A person wearing a black coat.: 2,6
+A person with dark trousers.: 0,1,3,4,5,9
+A person wearing dark trousers.: 0,1,3,4,5,9
+A person wearing black trousers with white stripe.: 3
+A person wearing gray trousers.: 6
+A person wearing dark gray trousers.: 5
+A person wearing dark sneakers.: 1
+A person wearing white shoes.: 3
+A person wearing black shoes.: 6
+A person wearing light tan shoes.: 5
+A person wearing dark shoes.: 4,5,9
+A person holding a light-brown box.: 0
+A person holding a purple polka-dot bag.: 2
+A person holding a transparent bottle.: 6
+A person carrying a dark bag.: 5
+A person holding a light box.: 4
+A person with a black helmet.: 2
+A person wearing a black coat and dark trousers.: 2
+A person wearing a black coat and gray trousers.: 6
+A person wearing dark trousers and dark shoes.: 4,5,9
+A person wearing dark trousers and dark sneakers.: 1
+A person wearing black trousers with white stripe and white shoes.: 3
+A person wearing dark gray trousers and light tan shoes.: 5
+A person wearing dark headwear and dark trousers.: 4,5,9
+A person wearing dark headwear and dark shoes.: 4,5,9
+A person wearing dark headwear and a light coat.: 4
+A person wearing dark headwear and a striped coat.: 5
+A person wearing dark headwear and a dark hooded coat.: 9
+A person wearing a black helmet and a black coat.: 2
+A person wearing a black helmet and holding a purple polka-dot bag.: 2
+A person wearing a black coat and holding a transparent bottle.: 6
+A person wearing dark trousers and holding a light box.: 4
+A person wearing dark trousers and carrying a dark bag.: 5
+A person wearing dark trousers and holding a light-brown box.: 0
+A person wearing dark trousers and wearing dark sneakers.: 1
+A person wearing dark trousers and wearing white shoes.: 3
+A person wearing dark trousers and wearing black shoes.: 6
+A person wearing dark trousers and wearing light tan shoes.: 5
+A person wearing dark trousers and wearing dark shoes.: 4,5,9
+A person with a dark cap and in a light top.: 0
+A person with a dark cap and wearing dark trousers.: 0
+A person with a dark cap and holding a light-brown box.: 0
+A person with a black cap and in a white T-shirt.: 1
+A person with a black cap and wearing dark trousers.: 1
+A person with a black cap and wearing dark sneakers.: 1
+A person with a black cap and in a white hoodie.: 3
+A person with a black cap and wearing black trousers with white stripe.: 3
+A person with a black cap and wearing white shoes.: 3
+A person with dark headwear and in a light coat.: 4
+A person with dark headwear and in a striped coat.: 5
+A person with dark headwear and in a dark hooded coat.: 9
+A person with dark headwear and wearing dark trousers.: 4,5,9
+A person with dark headwear and wearing dark shoes.: 4,5,9
+A person with dark headwear and wearing light tan shoes.: 5
+A person with dark headwear and holding a light box.: 4
+A person with dark headwear and carrying a dark bag.: 5
+A person in a black coat and holding a purple polka-dot bag.: 2
+A person in a black coat and holding a transparent bottle.: 6
+A person in a black coat and wearing dark trousers.: 2
+A person in a black coat and wearing gray trousers.: 6
+A person in a light top and holding a light-brown box.: 0
+A person in a white T-shirt and wearing dark trousers.: 1
+A person in a white T-shirt and wearing dark sneakers.: 1
+A person in a white hoodie and wearing black trousers with white stripe.: 3
+A person in a white hoodie and wearing white shoes.: 3
+A person in a light coat and wearing dark trousers.: 4
+A person in a light coat and wearing dark shoes.: 4
+A person in a light coat and holding a light box.: 4
+A person in a striped coat and wearing dark gray trousers.: 5
+A person in a striped coat and wearing light tan shoes.: 5
+A person in a striped coat and carrying a dark bag.: 5
+A person in a dark hooded coat and wearing dark trousers.: 9
+A person in a dark hooded coat and wearing dark shoes.: 9
+A person wearing dark trousers and wearing dark shoes and holding a light box.: 4
+A person wearing dark trousers and wearing dark shoes and carrying a dark bag.: 5
+A person wearing dark trousers and wearing dark shoes and wearing dark headwear.: 4,5,9
+A person wearing dark trousers and wearing dark sneakers and wearing a black cap.: 1
+A person wearing black trousers with white stripe and wearing white shoes and wearing a black cap.: 3
+A person wearing dark gray trousers and wearing light tan shoes and carrying a dark bag.: 5
+A person wearing a black helmet and wearing a black coat and holding a purple polka-dot bag.: 2
+A person wearing a black coat and wearing gray trousers and holding a transparent bottle.: 6

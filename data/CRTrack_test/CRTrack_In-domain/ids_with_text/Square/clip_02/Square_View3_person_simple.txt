@@ -1,0 +1,7 @@
+0: A person in a white hoodie and black trousers.
+1: A person with a black beanie, in a black coat, dark gray trousers, black shoes, holding a bottle.
+2: A person with a light head covering, in a dark coat, black trousers, holding a brown box.
+3: A person with a light beanie, in a light gray coat, black trousers.
+4: A person in a beige jacket with red and black stripes, dark blue jeans, light shoes.
+5: A person in a white top and black trousers, holding a yellow ball.
+6: A person with a black beanie, in a light gray pullover, black trousers, carrying a black bag.

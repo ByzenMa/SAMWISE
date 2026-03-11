@@ -1,0 +1,22 @@
+A person with a black beanie.: 0
+A person in a black coat.: 0,7
+A person in a black coat and gray trousers.: 0
+A person in a dark coat.: 1
+A person in a dark coat and black trousers.: 1
+A person holding a light-yellow box.: 1
+A person on a scooter.: 2
+A person in a white top.: 2
+A person in a white top and black trousers.: 2
+A person in a light-gray coat.: 3
+A person in a light-gray coat and dark trousers.: 3
+A person with a black cap.: 4
+A person in a light gray sweater.: 4
+A person in a light gray sweater and black trousers.: 4
+A person in a striped beige jacket.: 5
+A person in a striped beige jacket and blue jeans.: 5
+A person holding a brown box.: 5
+A person with a dark head covering.: 6
+A person in a bright yellow coat.: 6
+A person in a bright yellow coat and dark trousers.: 6
+A person with a black head covering.: 7
+A person in a black coat and dark trousers.: 7

@@ -1,0 +1,60 @@
+A person in a white hoodie.: 0
+A person in a white hoodie and black trousers.: 0
+A person with a black beanie.: 1,6
+A person with a black beanie, in a black coat.: 1
+A person with a black beanie, in a black coat, dark gray trousers, black shoes, holding a bottle.: 1
+A person with a black beanie, in a light gray pullover, black trousers, carrying a black bag.: 6
+A person in a black coat.: 1
+A person in a black coat, dark gray trousers, black shoes, holding a bottle.: 1
+A person in a black coat and dark gray trousers.: 1
+A person in a black coat, dark gray trousers and black shoes.: 1
+A person in a dark coat.: 2
+A person in a dark coat, black trousers, holding a brown box.: 2
+A person in a dark coat and black trousers.: 2
+A person with a light head covering.: 2
+A person with a light head covering, in a dark coat, black trousers, holding a brown box.: 2
+A person with a light beanie.: 3
+A person with a light beanie, in a light gray coat, black trousers.: 3
+A person in a light gray coat.: 3
+A person in a light gray coat and black trousers.: 3
+A person in a beige jacket with red and black stripes.: 4
+A person in a beige jacket with red and black stripes, dark blue jeans, light shoes.: 4
+A person in a beige jacket with red and black stripes and dark blue jeans.: 4
+A person in a white top.: 5
+A person in a white top and black trousers.: 5
+A person in a white top and black trousers, holding a yellow ball.: 5
+A person in a white top, black trousers and holding a yellow ball.: 5
+A person in a light gray pullover.: 6
+A person in a light gray pullover and black trousers.: 6
+A person in a light gray pullover, black trousers and carrying a black bag.: 6
+A person carrying a black bag.: 6
+A person holding a bottle.: 1
+A person holding a brown box.: 2
+A person holding a yellow ball.: 5
+A person wearing black trousers.: 0,1,2,3,5,6
+A person wearing black trousers and holding a yellow ball.: 5
+A person wearing black trousers, holding a yellow ball.: 5
+A person wearing black trousers and carrying a black bag.: 6
+A person wearing black trousers, carrying a black bag.: 6
+A person wearing black trousers and holding a bottle.: 1
+A person wearing black trousers, holding a bottle.: 1
+A person wearing black trousers and holding a brown box.: 2
+A person wearing black trousers, holding a brown box.: 2
+A person wearing black trousers and in a white hoodie.: 0
+A person wearing black trousers and in a white top.: 5
+A person wearing black trousers and in a black coat.: 1
+A person wearing black trousers and in a dark coat.: 2
+A person wearing black trousers and in a light gray coat.: 3
+A person wearing black trousers and in a light gray pullover.: 6
+A person wearing dark gray trousers.: 1
+A person wearing dark gray trousers and black shoes.: 1
+A person wearing dark gray trousers, black shoes and holding a bottle.: 1
+A person wearing dark gray trousers and holding a bottle.: 1
+A person wearing black shoes.: 1
+A person wearing black shoes and holding a bottle.: 1
+A person wearing light shoes.: 4
+A person wearing dark blue jeans.: 4
+A person wearing dark blue jeans and light shoes.: 4
+A person wearing a yellow ball.: 5
+A person wearing a brown box.: 2
+A person wearing a bottle.: 1

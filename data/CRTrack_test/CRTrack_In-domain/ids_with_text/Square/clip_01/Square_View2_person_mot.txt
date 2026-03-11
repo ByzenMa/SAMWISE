@@ -1,0 +1,68 @@
+A person with a black beanie.: 0,6
+A person in a black coat.: 0,9
+A person in a gray hooded coat.: 1
+A person in a light gray sweater.: 2
+A person in a black hooded sweatshirt.: 3
+A person with a black cap.: 4
+A person with a dark cap.: 5
+A person with a dark head covering.: 7,11
+A person in a white hooded sweatshirt.: 4
+A person in a white T-shirt.: 8
+A person on a scooter.: 9
+A person in a pink vest.: 10
+A person wearing a black helmet.: 9
+A person holding a bottle.: 0,3
+A person holding a board.: 2
+A person holding a phone.: 4
+A person holding an object.: 5
+A person carrying a shoulder bag.: 6
+A person holding a box.: 7,8
+A person carrying a light bag.: 10
+A person holding a yellow ball.: 11
+A person wearing dark gray trousers.: 0
+A person wearing black shorts.: 1
+A person wearing black trousers.: 2,3,4,8,10,11
+A person wearing dark trousers.: 5,6,7,9,11
+A person wearing beige coat.: 7
+A person wearing dark coat with red accents.: 5
+A person wearing dark coat with a light band.: 11
+A person wearing two-tone sneakers.: 3,4
+A person wearing white shoes.: 2
+A person wearing red shoes.: 1
+A person wearing black shoes.: 0
+A person wearing dark shoes.: 5,6,7,8,10,11
+A person wearing light shoes.: 10
+A person beside a vehicle.: 8
+A person wearing a black coat and dark gray trousers.: 0
+A person wearing a black coat and dark trousers.: 9
+A person wearing a black hooded sweatshirt and black joggers.: 3
+A person wearing a white hooded sweatshirt and black trousers.: 4
+A person wearing a dark coat and dark trousers.: 5,6
+A person wearing a beige coat and dark trousers.: 7
+A person wearing black trousers and white shoes.: 2
+A person wearing black trousers and dark shoes.: 8
+A person wearing dark trousers and dark shoes.: 5,6,7,11
+A person wearing dark trousers and holding a yellow ball.: 11
+A person wearing black trousers and holding a box.: 8
+A person wearing black trousers and holding a bottle.: 3
+A person wearing black trousers and holding a board.: 2
+A person wearing black trousers and holding a phone.: 4
+A person wearing black trousers and carrying a light bag.: 10
+A person wearing dark trousers and carrying a shoulder bag.: 6
+A person wearing dark trousers and holding an object.: 5
+A person wearing dark trousers and holding a cushion.: 9
+A person wearing dark trousers and beside a vehicle.: 8
+A person wearing dark trousers and on a scooter.: 9
+A person wearing dark trousers and wearing a black helmet.: 9
+A person wearing black coat, dark trousers, and holding a cushion.: 9
+A person wearing black coat, dark trousers, and wearing a black helmet.: 9
+A person wearing black hooded sweatshirt, black joggers, and holding a bottle.: 3
+A person wearing white hooded sweatshirt, black trousers, two-tone sneakers, and holding a phone.: 4
+A person wearing dark coat, dark trousers, dark shoes, and carrying a shoulder bag.: 6
+A person wearing beige coat, dark trousers, dark shoes, and holding a box.: 7
+A person wearing white T-shirt, black trousers, dark shoes, holding a box, and beside a vehicle.: 8
+A person wearing pink vest, dark trousers, light shoes, and carrying a light bag.: 10
+A person wearing dark coat with a light band, dark trousers, and holding a yellow ball.: 11
+A person wearing dark head covering, dark coat, dark trousers, dark shoes, and carrying a shoulder bag.: 6
+A person wearing dark head covering, beige coat, dark trousers, dark shoes, and holding a box.: 7
+A person wearing dark head covering, dark coat with a light band, dark trousers, and holding a yellow ball.: 11

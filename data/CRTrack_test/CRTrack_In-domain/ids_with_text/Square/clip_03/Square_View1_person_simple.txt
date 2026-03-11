@@ -1,0 +1,24 @@
+0: A person on a scooter, in a dark coat, dark trousers, holding a reddish-brown object.
+1: Unclear.
+2: A person with a light-colored hat, in a light olive coat, dark trousers.
+3: A person with a hood, in a dark hooded coat, dark trousers, holding a light-colored item.
+4: A person in a dark coat, dark trousers, holding a dark elongated item.
+6: A person in a dark coat, dark trousers, holding a light-colored rectangular object.
+7: A person in a black hooded coat, black trousers with white stripes, dark sneakers, holding a pinkish-red object.
+9: A person in a white top, black trousers, white shoes, holding a yellow soccer ball.
+10: A person in a white hooded sweatshirt, black trousers with white stripes, white sneakers, holding a red can.
+11: A person with a black beanie, in a black coat, dark gray trousers, holding a light-colored rectangular object.
+12: A person with a light-colored rounded headwear, in a dark coat, dark trousers, holding a light-colored rectangular object.
+13: A person in a yellow coat, dark trousers, dark shoes.
+14: A person on a motorcycle, in a red coat with black trim, dark trousers.
+15: A person on a scooter, in a beige vest, dark trousers.
+16: A person in a white T-shirt, black trousers, white sneakers.
+17: A person with dark headwear, in a dark coat, dark trousers, holding a light-colored rectangular object.
+18: A person with dark rounded headwear, in a dark coat, dark trousers, holding a white bag.
+19: A person with dark rounded headwear, in a dark coat, dark trousers, carrying a light pink bag.
+20: Unclear.
+21: A person on a scooter, in a dark blue coat, dark trousers, holding a light-colored object.
+22: A person in a dark coat, dark trousers, holding a light-colored rectangular object.
+23: A person with a yellow hat, in a yellow coat, dark trousers.
+24: A person with a dark hat, in a dark coat, dark trousers, holding a light-colored object.
+25: A person with dark rounded headwear, in a dark coat, dark trousers, carrying a pink backpack.

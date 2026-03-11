@@ -1,0 +1,18 @@
+1: A person in a medium-gray coat, dark trousers, carrying a bag.
+2: A person in a black coat, gray trousers, dark shoes, holding a phone.
+3: A person in a yellow hooded coat, black trousers, white shoes.
+4: A person in a dark coat, dark trousers, holding a dark object.
+5: A person in a white hooded sweatshirt, black trousers with white stripe, white sneakers.
+7: A person with dark headwear, in a dark coat, dark trousers, light shoes.
+8: A person on a scooter, in a dark red hooded coat, black trousers.
+9: A person in a dark hooded coat, dark trousers, holding a light object.
+10: A person in a white T-shirt, dark trousers, red sneakers.
+11: A person on a red motorcycle, in a dark coat, dark trousers.
+12: A person with a dark cap, in a light top, dark trousers, white sneakers, holding a basketball.
+13: A person in a beige jacket, dark gray trousers, light brown shoes, carrying a black bag.
+14: A person with a black helmet, in a dark coat, holding a purple polka-dot bag.
+15: A person in a dark coat, dark trousers, holding a dark object.
+16: A person with light hooded headwear, in a light coat, dark trousers, carrying a light bag.
+17: A person with dark headwear, in a black coat, dark trousers, holding a light object.
+19: A person with a black beanie, in a black hooded coat, black trousers with white stripe, black-and-white shoes.
+20: Unclear.

@@ -1,0 +1,9 @@
+0: A person with a black beanie, in a black coat and gray trousers.
+1: A person in a dark coat and black trousers, holding a light-yellow box.
+2: A person on a scooter, in a white top and black trousers.
+3: A person in a light-gray coat and dark trousers.
+4: A person with a black cap, in a light gray sweater and black trousers.
+5: A person in a striped beige jacket and blue jeans, holding a brown box.
+6: A person with a dark head covering, in a bright yellow coat and dark trousers.
+7: A person with a black head covering, in a black coat and dark trousers.
+8: Unclear.

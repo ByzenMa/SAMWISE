@@ -1,0 +1,8 @@
+0: A person with a dark cap, in a light coat, dark trousers, holding a beige box.
+1: A person with a light head covering, in a light gray coat, dark trousers, holding a phone.
+2: A person in a white hoodie, black trousers, white sneakers, holding a red-capped bottle.
+3: A person in a black jacket, dark gray trousers, black shoes, holding a red-and-white bottle.
+5: A person with a light head covering, in a black coat, black trousers, holding a yellow box.
+6: A person with a purple polka-dot hood, in a light coat, dark trousers, on a scooter.
+8: A person with a light helmet, in a dark coat, dark trousers, on a scooter, holding a pink object.
+9: A person with a black beanie, in a beige coat, blue jeans, tan boots, holding a yellow object.

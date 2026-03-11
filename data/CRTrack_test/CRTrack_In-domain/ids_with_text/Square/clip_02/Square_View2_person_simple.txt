@@ -1,0 +1,8 @@
+0: A person with a dark cap, in a light top, dark trousers, holding a light-brown box.
+1: A person with a black cap, in a white T-shirt, dark trousers, dark sneakers.
+2: A person with a black helmet, in a black coat, holding a purple polka-dot bag.
+3: A person with a black cap, in a white hoodie, black trousers with white stripe, white shoes.
+4: A person with dark headwear, in a light coat, dark trousers, dark shoes, holding a light box.
+5: A person with dark headwear, in a striped coat, dark gray trousers, light tan shoes, carrying a dark bag.
+6: A person in a black coat, gray trousers, black shoes, holding a transparent bottle.
+9: A person with dark headwear, in a dark hooded coat, dark trousers, dark shoes.

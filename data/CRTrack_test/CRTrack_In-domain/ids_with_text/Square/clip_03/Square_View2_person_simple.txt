@@ -1,0 +1,7 @@
+0: A person in a white top and black trousers.
+1: A person in a beige coat and dark gray trousers.
+2: A person in a white hoodie and black track pants, holding a red-and-white bottle.
+3: A person in a black hooded coat and black trousers, holding a red-capped bottle.
+4: A person in a light beige top and black trousers, holding a phone.
+5: A person with a dark cap, in a light coat and dark trousers, holding a brown box.
+6: A person in a black coat and gray trousers, holding an orange-capped bottle.

@@ -1,0 +1,61 @@
+A person in a medium-gray coat.: 1
+A person in a black coat.: 2,8,9,11,14,15,17,19
+A person in a yellow hooded coat.: 3
+A person in a white hooded sweatshirt.: 5
+A person in a white T-shirt.: 10
+A person in a beige jacket.: 13
+A person in a dark red hooded coat.: 8
+A person in a dark hooded coat.: 9
+A person with dark headwear.: 7,9,17,19
+A person with a black helmet.: 14
+A person with a black beanie.: 19
+A person with light hooded headwear.: 16
+A person in a dark coat.: 2,4,7,8,9,11,14,15,17,19
+A person in a light coat.: 16
+A person in a light top.: 12
+A person in a dark trousers.: 1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,19
+A person in black trousers.: 3,5,8,9,17,19
+A person in gray trousers.: 1,2
+A person in white sneakers.: 5,12
+A person in red sneakers.: 10
+A person in light brown shoes.: 13
+A person in black-and-white shoes.: 19
+A person in dark shoes.: 2
+A person in white shoes.: 3,5
+A person holding a phone.: 2
+A person holding a dark object.: 4,15
+A person holding a light object.: 9,17
+A person carrying a bag.: 1
+A person carrying a black bag.: 13
+A person carrying a light bag.: 16
+A person holding a purple polka-dot bag.: 14
+A person holding a basketball.: 12
+A person on a scooter.: 8
+A person on a red motorcycle.: 11
+A person in a black coat and dark trousers.: 2,8,9,11,14,15,17,19
+A person in a black coat and black trousers.: 19
+A person in a black coat and gray trousers.: 2
+A person in a dark coat and dark trousers.: 4,7,8,9,11,14,15,17,19
+A person in a dark coat and dark trousers, holding a dark object.: 4,15
+A person in a dark coat and dark trousers, holding a light object.: 9,17
+A person in a dark coat and dark trousers, holding a purple polka-dot bag.: 14
+A person in a dark coat and dark trousers, on a red motorcycle.: 11
+A person in a dark coat and dark trousers, on a scooter.: 8
+A person in a white hooded sweatshirt and black trousers with white stripe and white sneakers.: 5
+A person in a white T-shirt and dark trousers and red sneakers.: 10
+A person with a black beanie and black hooded coat and black trousers with white stripe and black-and-white shoes.: 19
+A person with dark headwear and dark coat and dark trousers.: 7,9,17
+A person with dark headwear and black coat and dark trousers.: 17
+A person with dark headwear and black coat and black trousers.: 19
+A person with a black helmet and dark coat.: 14
+A person with a black beanie and black hooded coat.: 19
+A person in a black hooded coat and black trousers with white stripe.: 19
+A person in a dark red hooded coat and black trousers.: 8
+A person in a dark hooded coat and dark trousers.: 9
+A person in a light coat and dark trousers and carrying a light bag.: 16
+A person in a light top and dark trousers and white sneakers and holding a basketball.: 12
+A person in a beige jacket and dark gray trousers and light brown shoes and carrying a black bag.: 13
+A person in a medium-gray coat and dark trousers and carrying a bag.: 1
+A person in a yellow hooded coat and black trousers and white shoes.: 3
+A person in a white hooded sweatshirt and black trousers with white stripe.: 5
+A person in a black coat and gray trousers and dark shoes and holding a phone.: 2

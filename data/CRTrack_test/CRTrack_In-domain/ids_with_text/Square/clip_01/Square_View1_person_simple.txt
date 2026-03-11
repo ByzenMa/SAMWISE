@@ -1,0 +1,26 @@
+0: Unclear.
+1: Unclear.
+2: Unclear.
+3: A person with a black beanie, in a yellow puffer, black trousers, white sneakers.
+5: Unclear.
+6: A person with a black beanie, in a white hoodie, black trousers, white sneakers, holding a phone.
+8: A person on a scooter, in a maroon coat, black trousers, holding a phone.
+9: A person on a motorcycle, in a dark coat, dark trousers, dark shoes, wearing a black helmet.
+10: A person in an off-white top, black trousers, white sneakers, holding a brown box.
+12: A person in a white coat, dark trousers, dark shoes.
+13: A person with a black beanie, in a black coat, dark trousers, carrying a dark shoulder bag.
+14: A person in a white T-shirt, dark trousers, dark shoes, holding a brown box.
+15: A person with a black beanie, in a black coat, dark gray trousers, dark shoes, holding a smartphone.
+16: A person with dark headwear, in a dark coat, dark trousers, holding a reddish-brown object.
+17: A person in a black hooded coat, black trousers with a white stripe, gray sneakers, holding a dark object.
+18: A person with dark headwear, in a dark coat, dark trousers, light-colored shoes, holding a light-colored item.
+19: A person on a motorcycle, wearing a red helmet, red coat, dark trousers, with a red backpack.
+20: A person in a light-gray coat, dark trousers, holding a dark object.
+21: A person with dark headwear, in a dark coat, dark trousers, holding a dark object.
+22: A person on a red motorbike, wearing a white helmet, dark coat, dark trousers, holding a light-colored object.
+23: A person with dark headwear, in a black coat, dark trousers, holding a beige object with a yellow patch.
+24: A person on a green-and-white scooter, wearing a dark gray cap, black coat, dark trousers.
+25: A person in a light pink coat, dark trousers, dark shoes.
+26: A person on a motorcycle, wearing dark headwear, dark coat, dark trousers.
+27: A person with dark headwear, in a beige coat, dark trousers, holding a dark bag.
+29: Unclear.

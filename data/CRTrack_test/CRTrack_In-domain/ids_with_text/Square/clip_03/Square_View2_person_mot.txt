@@ -1,0 +1,26 @@
+A person in a white top.: 0
+A person in a white top and black trousers.: 0
+A person in a beige coat.: 1
+A person in a beige coat and dark gray trousers.: 1
+A person in a white hoodie.: 2
+A person in a white hoodie and black track pants.: 2
+A person in a white hoodie and black track pants, holding a red-and-white bottle.: 2
+A person in a black hooded coat.: 3
+A person in a black hooded coat and black trousers.: 3
+A person in a black hooded coat and black trousers, holding a red-capped bottle.: 3
+A person in a light beige top.: 4
+A person in a light beige top and black trousers.: 4
+A person in a light beige top and black trousers, holding a phone.: 4
+A person with a dark cap.: 5
+A person with a dark cap, in a light coat.: 5
+A person with a dark cap, in a light coat and dark trousers.: 5
+A person with a dark cap, in a light coat and dark trousers, holding a brown box.: 5
+A person in a black coat.: 6
+A person in a black coat and gray trousers.: 6
+A person in a black coat and gray trousers, holding an orange-capped bottle.: 6
+A person in black trousers.: 0,1,2,3,4
+A person holding a red-and-white bottle.: 2
+A person holding a red-capped bottle.: 3
+A person holding a phone.: 4
+A person holding a brown box.: 5
+A person holding an orange-capped bottle.: 6

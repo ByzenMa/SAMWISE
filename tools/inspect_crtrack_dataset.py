@@ -70,6 +70,39 @@ def _fit_text(text, max_chars=75):
     return text[: max_chars - 3] + "..."
 
 
+def _load_font(font_size=30):
+    """Load a visibly large font with graceful fallback."""
+    candidate_fonts = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    for font_path in candidate_fonts:
+        try:
+            return ImageFont.truetype(font_path, font_size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def _annotate_text_on_image_top(img, text, font):
+    """Overlay view text on top of the original image for easy visual check."""
+    out = img.copy()
+    draw = ImageDraw.Draw(out)
+
+    margin = 10
+    text_box = draw.textbbox((0, 0), text, font=font)
+    txt_w = text_box[2] - text_box[0]
+    txt_h = text_box[3] - text_box[1]
+
+    x = margin
+    y = margin
+    rect_w = min(out.width - margin * 2, txt_w + 20)
+    rect_h = txt_h + 16
+    draw.rectangle([x - 6, y - 4, x - 6 + rect_w, y - 4 + rect_h], fill=(0, 0, 0, 170))
+    draw.text((x, y), text, fill=(255, 255, 255), font=font)
+    return out
+
+
 def generate_crtrack_preview(
     crtrack_path="data/CRTrack_my1",
     num_frames=8,
@@ -116,22 +149,23 @@ def generate_crtrack_preview(
     canvas_h = top_pad * 2 + row_title_h + len(rows) * (h + text_h + gap)
     canvas = Image.new("RGB", (canvas_w, canvas_h), (245, 245, 245))
     draw = ImageDraw.Draw(canvas)
-    font = ImageFont.load_default()
+    title_font = _load_font(font_size=30)
+    text_font = _load_font(font_size=34)
 
     y = top_pad
     for i, t in enumerate(col_titles):
         x = left_pad + i * (w + gap)
-        draw.text((x + 8, y + 6), t, fill=(10, 10, 10), font=font)
+        draw.text((x + 8, y + 6), t, fill=(10, 10, 10), font=title_font)
 
     y += row_title_h
     for view_name, im0, im1, im2 in rows:
+        view_text = meta.get("view_texts", {}).get(view_name, "")
+        txt = f"{view_name}: {_fit_text(view_text)}"
+        im0 = _annotate_text_on_image_top(im0, txt, text_font)
+
         for i, im in enumerate([im0, im1, im2]):
             x = left_pad + i * (w + gap)
             canvas.paste(im, (x, y))
-
-        view_text = meta.get("view_texts", {}).get(view_name, "")
-        txt = f"{view_name}: {_fit_text(view_text)}"
-        draw.text((left_pad + 8, y + h + 6), txt, fill=(20, 20, 20), font=font)
         y += h + text_h + gap
 
     out = Path(output_path)

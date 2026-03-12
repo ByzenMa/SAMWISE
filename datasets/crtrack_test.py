@@ -67,6 +67,11 @@ class CRTrackTestDataset(Dataset):
                         continue
 
                     caption = self._build_caption(row)
+                    view_texts = {
+                        "view1": " ".join(str(row.get("view1_txt", "")).lower().split()),
+                        "view2": " ".join(str(row.get("view2_txt", "")).lower().split()),
+                        "view3": " ".join(str(row.get("view3_txt", "")).lower().split()),
+                    }
                     self.metas.append(
                         {
                             "scene": scene,
@@ -78,6 +83,7 @@ class CRTrackTestDataset(Dataset):
                                 "view3": int(row["view3"]),
                             },
                             "frame_ids": frame_ids,
+                            "view_texts": view_texts,
                             "view_pkls": {k: str(v) for k, v in view_pkls.items()},
                         }
                     )
@@ -200,6 +206,7 @@ class CRTrackTestDataset(Dataset):
             "video_id": f"{meta['scene']}/{meta['clip']}/{view_name}",
             "exp_id": exp_id,
             "view_name": view_name,
+            "view_text": meta.get("view_texts", {}).get(view_name, ""),
         }
 
         imgs, target = self._transforms(imgs, target)

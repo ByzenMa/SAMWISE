@@ -15,16 +15,7 @@ from datasets.transform_utils import FrameSampler, make_coco_transforms
 
 
 class CRTrackTestDataset(Dataset):
-    """
-    CRTrack three-view dataset.
-
-    The loader follows the MeViS-style target format so it can be used by the
-    existing training pipeline. Three synchronized views are packed into one
-    clip by concatenating frames along temporal dimension:
-    - input images: [3 * T, 3, H, W]
-    - target fields (boxes/masks/valid/labels/frames_idx): length 3 * T
-    - target['view_ids']: 0/1/2 marks view1/view2/view3 for each frame
-    """
+    """CRTrack three-view dataset with separated stream outputs."""
 
     VIEW_NAMES = ("view1", "view2", "view3")
 
@@ -123,8 +114,7 @@ class CRTrackTestDataset(Dataset):
         for view_name in self.VIEW_NAMES:
             view_data = self._get_view_data(view_pkls[view_name])
             frame_sets.append(set(view_data.keys()))
-        common = sorted(frame_sets[0].intersection(frame_sets[1]).intersection(frame_sets[2]))
-        return common
+        return sorted(frame_sets[0].intersection(frame_sets[1]).intersection(frame_sets[2]))
 
     @staticmethod
     def _mask_to_box(mask):
@@ -159,6 +149,63 @@ class CRTrackTestDataset(Dataset):
                     return int(size[0]), int(size[1])
         return 1080, 1920
 
+    def _build_single_view_sample(self, meta, sample_frame_ids, view_name, exp_id):
+        view_data = self._get_view_data(meta["view_pkls"][view_name])
+        h, w = self._infer_hw(view_data)
+        obj_id = meta["view_obj_ids"][view_name]
+
+        imgs, labels, boxes, masks, valid = [], [], [], [], []
+        for frame_id in sample_frame_ids:
+            decoded = self._decode_obj_mask(view_data, frame_id, obj_id)
+            if decoded is None:
+                mask_np = np.zeros((h, w), dtype=np.float32)
+            else:
+                mask_np = (decoded > 0).astype(np.float32)
+
+            # CRTrack_test in current repo contains RLE masks only.
+            # Build pseudo-RGB frame from mask so existing transforms can be reused.
+            img = Image.fromarray((mask_np * 255).astype(np.uint8), mode="L").convert("RGB")
+
+            label = torch.tensor(0)
+            if (mask_np > 0).any():
+                y1, y2, x1, x2 = self._mask_to_box(mask_np)
+                box = torch.tensor([x1, y1, x2, y2], dtype=torch.float)
+                valid.append(1)
+            else:
+                box = torch.tensor([0, 0, 0, 0], dtype=torch.float)
+                valid.append(0)
+
+            imgs.append(img)
+            labels.append(label)
+            boxes.append(box)
+            masks.append(torch.from_numpy(mask_np))
+
+        labels = torch.stack(labels, dim=0)
+        boxes = torch.stack(boxes, dim=0)
+        masks = torch.stack(masks, dim=0)
+
+        width, height = imgs[-1].size
+        boxes[:, 0::2].clamp_(min=0, max=width)
+        boxes[:, 1::2].clamp_(min=0, max=height)
+
+        target = {
+            "frames_idx": torch.tensor(sample_frame_ids, dtype=torch.long),
+            "labels": labels,
+            "boxes": boxes,
+            "masks": masks,
+            "valid": torch.tensor(valid, dtype=torch.long),
+            "caption": meta["caption"],
+            "orig_size": torch.as_tensor([int(height), int(width)]),
+            "size": torch.as_tensor([int(height), int(width)]),
+            "video_id": f"{meta['scene']}/{meta['clip']}/{view_name}",
+            "exp_id": exp_id,
+            "view_name": view_name,
+        }
+
+        imgs, target = self._transforms(imgs, target)
+        imgs = torch.stack(imgs, dim=0)
+        return imgs, target
+
     def __len__(self):
         return len(self.metas)
 
@@ -172,76 +219,20 @@ class CRTrackTestDataset(Dataset):
             sample_pos = FrameSampler.sample_global_frames(center_pos, len(frame_ids), self.num_frames)
             sample_frame_ids = [frame_ids[p] for p in sample_pos]
 
-            imgs, labels, boxes, masks, valid = [], [], [], [], []
-            frames_idx, view_ids = [], []
-            per_view_num_frames = []
+            view_imgs, view_targets = [], []
+            for view_name in self.VIEW_NAMES:
+                imgs, target = self._build_single_view_sample(meta, sample_frame_ids, view_name, idx)
+                view_imgs.append(imgs)
+                view_targets.append(target)
 
-            for view_id, view_name in enumerate(self.VIEW_NAMES):
-                view_data = self._get_view_data(meta["view_pkls"][view_name])
-                h, w = self._infer_hw(view_data)
-                obj_id = meta["view_obj_ids"][view_name]
-
-                for frame_id in sample_frame_ids:
-                    decoded = self._decode_obj_mask(view_data, frame_id, obj_id)
-                    if decoded is None:
-                        mask_np = np.zeros((h, w), dtype=np.float32)
-                    else:
-                        mask_np = (decoded > 0).astype(np.float32)
-
-                    # CRTrack_test release in this repo contains RLE masks only.
-                    # Build a pseudo RGB frame from mask to keep transform API aligned.
-                    img = Image.fromarray((mask_np * 255).astype(np.uint8), mode="L").convert("RGB")
-
-                    label = torch.tensor(0)
-                    if (mask_np > 0).any():
-                        y1, y2, x1, x2 = self._mask_to_box(mask_np)
-                        box = torch.tensor([x1, y1, x2, y2], dtype=torch.float)
-                        valid.append(1)
-                    else:
-                        box = torch.tensor([0, 0, 0, 0], dtype=torch.float)
-                        valid.append(0)
-
-                    imgs.append(img)
-                    labels.append(label)
-                    boxes.append(box)
-                    masks.append(torch.from_numpy(mask_np))
-                    frames_idx.append(frame_id)
-                    view_ids.append(view_id)
-
-                per_view_num_frames.append(len(sample_frame_ids))
-
-            labels = torch.stack(labels, dim=0)
-            boxes = torch.stack(boxes, dim=0)
-            masks = torch.stack(masks, dim=0)
-
-            width, height = imgs[-1].size
-            boxes[:, 0::2].clamp_(min=0, max=width)
-            boxes[:, 1::2].clamp_(min=0, max=height)
-
-            target = {
-                "frames_idx": torch.tensor(frames_idx, dtype=torch.long),
-                "labels": labels,
-                "boxes": boxes,
-                "masks": masks,
-                "valid": torch.tensor(valid, dtype=torch.long),
-                "view_ids": torch.tensor(view_ids, dtype=torch.long),
-                "per_view_num_frames": torch.tensor(per_view_num_frames, dtype=torch.long),
-                "caption": meta["caption"],
-                "orig_size": torch.as_tensor([int(height), int(width)]),
-                "size": torch.as_tensor([int(height), int(width)]),
-                "video_id": f"{meta['scene']}/{meta['clip']}",
-                "exp_id": idx,
-            }
-
-            imgs, target = self._transforms(imgs, target)
-            imgs = torch.stack(imgs, dim=0)
-
-            if torch.any(target["valid"] == 1):
+            # 至少一个视角存在目标即可
+            if any(torch.any(t["valid"] == 1) for t in view_targets):
                 instance_check = True
             else:
                 idx = random.randint(0, self.__len__() - 1)
 
-        return imgs, target
+        # 分别输出三个视频流和对应target（按view1/view2/view3对齐）
+        return view_imgs, view_targets
 
 
 def build(image_set, args):

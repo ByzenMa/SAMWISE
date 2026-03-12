@@ -1,7 +1,7 @@
 """Utility to visualize one random sample from CRTrack_test dataset.
 
 It saves one PNG with side-by-side comparisons for 3 views:
-- original image
+- original real image (RGB frame)
 - image + mask overlay
 - image + bbox
 and appends the corresponding view text under each view row.
@@ -18,7 +18,85 @@ from datasets.crtrack_test import CRTrackTestDataset
 from datasets.transform_utils import make_coco_transforms
 
 
-def _build_raw_view_frame_and_ann(dataset, meta, view_name, frame_id):
+VIEW_TOKEN_MAP = {
+    "view1": ["view1", "View1"],
+    "view2": ["view2", "View2"],
+    "view3": ["view3", "View3"],
+}
+
+
+class RealFrameResolver:
+    """Resolve real RGB frame files for each (scene, clip, view, frame_id)."""
+
+    IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
+
+    def __init__(self, crtrack_path, rgb_root=None):
+        self.crtrack_path = Path(crtrack_path)
+        self.rgb_root = Path(rgb_root) if rgb_root else None
+        self._cache = {}
+
+    def _candidate_dirs(self, scene, clip):
+        cands = []
+        if self.rgb_root is not None:
+            cands.extend([
+                self.rgb_root / scene / clip,
+                self.rgb_root / "images" / "train" / scene / clip,
+                self.rgb_root / "train" / scene / clip,
+            ])
+        cands.extend([
+            self.crtrack_path / "CRTrack_In-domain" / "images" / "train" / scene / clip,
+            self.crtrack_path / "images" / "train" / scene / clip,
+        ])
+        return [p for p in cands if p.exists()]
+
+    def _build_index(self, scene, clip):
+        key = (scene, clip)
+        if key in self._cache:
+            return self._cache[key]
+
+        frame_map = {"view1": {}, "view2": {}, "view3": {}}
+        for base_dir in self._candidate_dirs(scene, clip):
+            for file_path in base_dir.rglob("*"):
+                if not file_path.is_file() or file_path.suffix.lower() not in self.IMG_EXTS:
+                    continue
+                stem = file_path.stem
+                lower_name = file_path.name.lower()
+
+                # pick view by filename tokens
+                matched_view = None
+                for view_name, toks in VIEW_TOKEN_MAP.items():
+                    if any(tok.lower() in lower_name for tok in toks):
+                        matched_view = view_name
+                        break
+                if matched_view is None:
+                    continue
+
+                # collect all number tokens and map last token as frame id candidate
+                nums = []
+                cur = ""
+                for ch in stem:
+                    if ch.isdigit():
+                        cur += ch
+                    elif cur:
+                        nums.append(cur)
+                        cur = ""
+                if cur:
+                    nums.append(cur)
+                if not nums:
+                    continue
+
+                frame_id = int(nums[-1])
+                frame_map[matched_view][frame_id] = file_path
+
+        self._cache[key] = frame_map
+        return frame_map
+
+    def resolve(self, scene, clip, view_name, frame_id):
+        frame_map = self._build_index(scene, clip)
+        return frame_map.get(view_name, {}).get(int(frame_id), None)
+
+
+def _build_real_view_frame_and_ann(dataset, resolver, meta, view_name, frame_id):
     view_data = dataset._get_view_data(meta["view_pkls"][view_name])
     h, w = dataset._infer_hw(view_data)
     obj_id = meta["view_obj_ids"][view_name]
@@ -29,8 +107,16 @@ def _build_raw_view_frame_and_ann(dataset, meta, view_name, frame_id):
     else:
         mask = (decoded > 0).astype(np.uint8)
 
-    # Current CRTrack_test release here only provides masks; we keep a pseudo original.
-    original = Image.fromarray((mask * 255).astype(np.uint8), mode="L").convert("RGB")
+    real_path = resolver.resolve(meta["scene"], meta["clip"], view_name, frame_id)
+    if real_path is None:
+        raise RuntimeError(
+            f"Cannot find real RGB frame for {meta['scene']}/{meta['clip']}/{view_name}, frame_id={frame_id}. "
+            "Please provide --rgb_root pointing to extracted CRTrack image frames."
+        )
+
+    original = Image.open(real_path).convert("RGB")
+    if original.size != (w, h):
+        original = original.resize((w, h), Image.BILINEAR)
 
     box = None
     if mask.any():
@@ -68,6 +154,7 @@ def _fit_text(text, max_chars=75):
 
 def generate_crtrack_preview(
     crtrack_path="data/CRTrack_test",
+    rgb_root=None,
     num_frames=8,
     output_path="output/crtrack_preview.png",
     seed=None,
@@ -80,6 +167,7 @@ def generate_crtrack_preview(
         transforms=make_coco_transforms("valid_u", max_size=1024, resize=False),
         num_frames=num_frames,
     )
+    resolver = RealFrameResolver(crtrack_path=crtrack_path, rgb_root=rgb_root)
 
     if len(dataset) == 0:
         raise RuntimeError("CRTrack dataset is empty after parsing metadata.")
@@ -88,14 +176,12 @@ def generate_crtrack_preview(
     meta = dataset.metas[idx]
     frame_id = random.choice(meta["frame_ids"])
 
-    # Canvas layout: 3 rows (views) x 3 columns (orig/mask/bbox)
-    col_titles = ["Original", "+Mask", "+BBox"]
+    col_titles = ["Original (Real RGB)", "+Mask", "+BBox"]
     view_names = dataset.VIEW_NAMES
 
-    # Build images first (all same size from same source in this release)
     rows = []
     for view_name in view_names:
-        original, mask, box = _build_raw_view_frame_and_ann(dataset, meta, view_name, frame_id)
+        original, mask, box = _build_real_view_frame_and_ann(dataset, resolver, meta, view_name, frame_id)
         with_mask = _overlay_mask(original, mask)
         with_box = _draw_bbox(original, box)
         rows.append((view_name, original, with_mask, with_box))
@@ -113,7 +199,6 @@ def generate_crtrack_preview(
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.load_default()
 
-    # draw column titles
     y = top_pad
     for i, t in enumerate(col_titles):
         x = left_pad + i * (w + gap)
@@ -139,6 +224,7 @@ def generate_crtrack_preview(
 def main():
     parser = argparse.ArgumentParser("Inspect CRTrack_test dataset sample")
     parser.add_argument("--crtrack_path", default="data/CRTrack_test", type=str)
+    parser.add_argument("--rgb_root", default=None, type=str, help="Root folder that contains real RGB frame images")
     parser.add_argument("--num_frames", default=8, type=int)
     parser.add_argument("--output_path", default="output/crtrack_preview.png", type=str)
     parser.add_argument("--seed", default=None, type=int)
@@ -146,6 +232,7 @@ def main():
 
     out = generate_crtrack_preview(
         crtrack_path=args.crtrack_path,
+        rgb_root=args.rgb_root,
         num_frames=args.num_frames,
         output_path=args.output_path,
         seed=args.seed,

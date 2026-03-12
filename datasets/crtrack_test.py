@@ -1,7 +1,8 @@
-"""CRTrack test data loader (three-view video streams)."""
+"""CRTrack dataset loader (three-view video streams with real RGB frames)."""
 
 from pathlib import Path
 import csv
+import logging
 import random
 import pickle
 
@@ -14,21 +15,32 @@ from torch.utils.data import Dataset
 from datasets.transform_utils import FrameSampler, make_coco_transforms
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 class CRTrackTestDataset(Dataset):
-    """CRTrack three-view dataset with separated stream outputs."""
+    """CRTrack three-view dataset with separated stream outputs.
+
+    Returns:
+        view_imgs: list[Tensor], len=3, each tensor [T, C, H, W]
+        view_targets: list[dict], len=3, aligned with view_imgs
+    """
 
     VIEW_NAMES = ("view1", "view2", "view3")
+    IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
-    def __init__(self, root: Path, transforms, num_frames: int):
+    def __init__(self, root: Path, transforms, num_frames: int, strict_rgb_check: bool = True):
         self.root = Path(root)
         self._transforms = transforms
         self.num_frames = num_frames
+        self.strict_rgb_check = strict_rgb_check
 
         self.images_root = self.root / "images" / "train"
         self.cross_view_root = self.root / "ids_with_text_cross_view"
 
         self.metas = []
         self.view_data_cache = {}
+        self.rgb_index_cache = {}
         self._prepare_metas()
 
         print("\n clip num: ", len(self.metas))
@@ -43,6 +55,7 @@ class CRTrackTestDataset(Dataset):
             if clip_key not in selected_csv or csv_file.name.endswith("_with_txt.csv"):
                 selected_csv[clip_key] = csv_file
 
+        dropped_for_missing_rgb = 0
         for csv_path in selected_csv.values():
             scene = csv_path.parents[1].name
             clip = csv_path.parent.name
@@ -58,6 +71,20 @@ class CRTrackTestDataset(Dataset):
 
             frame_ids = self._get_frame_ids(view_pkls)
             if len(frame_ids) == 0:
+                continue
+
+            rgb_index = self._build_rgb_index(scene, clip)
+            rgb_common = set(frame_ids)
+            for view_name in self.VIEW_NAMES:
+                rgb_common &= set(rgb_index[view_name].keys())
+            frame_ids = sorted(rgb_common)
+            if self.strict_rgb_check and len(frame_ids) == 0:
+                dropped_for_missing_rgb += 1
+                LOGGER.warning(
+                    "Drop clip %s/%s: no common real RGB frames found for all three views.",
+                    scene,
+                    clip,
+                )
                 continue
 
             with open(csv_path, "r", encoding="utf-8-sig", newline="") as fp:
@@ -87,6 +114,9 @@ class CRTrackTestDataset(Dataset):
                             "view_pkls": {k: str(v) for k, v in view_pkls.items()},
                         }
                     )
+
+        if dropped_for_missing_rgb > 0:
+            LOGGER.warning("Dropped %d clip(s) due to missing real RGB frames.", dropped_for_missing_rgb)
 
     @staticmethod
     def _has_valid_view_ids(row):
@@ -122,6 +152,55 @@ class CRTrackTestDataset(Dataset):
             frame_sets.append(set(view_data.keys()))
         return sorted(frame_sets[0].intersection(frame_sets[1]).intersection(frame_sets[2]))
 
+    def _build_rgb_index(self, scene, clip):
+        key = (scene, clip)
+        if key in self.rgb_index_cache:
+            return self.rgb_index_cache[key]
+
+        base_dir = self.images_root / scene / clip
+        frame_map = {"view1": {}, "view2": {}, "view3": {}}
+        if base_dir.exists():
+            for file_path in base_dir.rglob("*"):
+                if not file_path.is_file() or file_path.suffix.lower() not in self.IMG_EXTS:
+                    continue
+                view_name = self._infer_view_name(file_path.name)
+                if view_name is None:
+                    continue
+                frame_id = self._extract_last_int_token(file_path.stem)
+                if frame_id is None:
+                    continue
+                frame_map[view_name][frame_id] = file_path
+
+        self.rgb_index_cache[key] = frame_map
+        return frame_map
+
+    @staticmethod
+    def _infer_view_name(filename):
+        lower_name = filename.lower()
+        if "view1" in lower_name:
+            return "view1"
+        if "view2" in lower_name:
+            return "view2"
+        if "view3" in lower_name:
+            return "view3"
+        return None
+
+    @staticmethod
+    def _extract_last_int_token(stem):
+        nums = []
+        cur = ""
+        for ch in stem:
+            if ch.isdigit():
+                cur += ch
+            elif cur:
+                nums.append(cur)
+                cur = ""
+        if cur:
+            nums.append(cur)
+        if not nums:
+            return None
+        return int(nums[-1])
+
     @staticmethod
     def _mask_to_box(mask):
         rows = np.any(mask, axis=1)
@@ -155,6 +234,17 @@ class CRTrackTestDataset(Dataset):
                     return int(size[0]), int(size[1])
         return 1080, 1920
 
+    def _load_real_rgb_frame(self, meta, view_name, frame_id, h, w):
+        rgb_index = self._build_rgb_index(meta["scene"], meta["clip"])
+        rgb_path = rgb_index[view_name].get(int(frame_id), None)
+        if rgb_path is None:
+            return None
+
+        img = Image.open(rgb_path).convert("RGB")
+        if img.size != (w, h):
+            img = img.resize((w, h), Image.BILINEAR)
+        return img
+
     def _build_single_view_sample(self, meta, sample_frame_ids, view_name, exp_id):
         view_data = self._get_view_data(meta["view_pkls"][view_name])
         h, w = self._infer_hw(view_data)
@@ -168,9 +258,9 @@ class CRTrackTestDataset(Dataset):
             else:
                 mask_np = (decoded > 0).astype(np.float32)
 
-            # CRTrack_test in current repo contains RLE masks only.
-            # Build pseudo-RGB frame from mask so existing transforms can be reused.
-            img = Image.fromarray((mask_np * 255).astype(np.uint8), mode="L").convert("RGB")
+            img = self._load_real_rgb_frame(meta, view_name, frame_id, h, w)
+            if img is None:
+                return None, None
 
             label = torch.tensor(0)
             if (mask_np > 0).any():
@@ -221,24 +311,40 @@ class CRTrackTestDataset(Dataset):
         while not instance_check:
             meta = self.metas[idx]
             frame_ids = meta["frame_ids"]
+            if len(frame_ids) == 0:
+                idx = random.randint(0, self.__len__() - 1)
+                continue
 
             center_pos = random.randint(0, len(frame_ids) - 1)
             sample_pos = FrameSampler.sample_global_frames(center_pos, len(frame_ids), self.num_frames)
             sample_frame_ids = [frame_ids[p] for p in sample_pos]
 
             view_imgs, view_targets = [], []
+            missing_rgb = False
             for view_name in self.VIEW_NAMES:
                 imgs, target = self._build_single_view_sample(meta, sample_frame_ids, view_name, idx)
+                if imgs is None:
+                    missing_rgb = True
+                    LOGGER.warning(
+                        "Skip sample %s/%s (%s): missing RGB frame in selected window %s.",
+                        meta["scene"],
+                        meta["clip"],
+                        view_name,
+                        sample_frame_ids,
+                    )
+                    break
                 view_imgs.append(imgs)
                 view_targets.append(target)
 
-            # 至少一个视角存在目标即可
+            if missing_rgb:
+                idx = random.randint(0, self.__len__() - 1)
+                continue
+
             if any(torch.any(t["valid"] == 1) for t in view_targets):
                 instance_check = True
             else:
                 idx = random.randint(0, self.__len__() - 1)
 
-        # 分别输出三个视频流和对应target（按view1/view2/view3对齐）
         return view_imgs, view_targets
 
 
@@ -249,10 +355,13 @@ def build(image_set, args):
     if image_set not in ["train", "test", "valid", "valid_u"]:
         raise ValueError(f"Unsupported image_set for CRTrack_test: {image_set}")
 
+    dataset_root = root / "CRTrack_In-domain" if (root / "CRTrack_In-domain").exists() else root
+
     transforms_set = "train" if image_set == "train" else "valid_u"
     dataset = CRTrackTestDataset(
-        root=root / "CRTrack_In-domain",
+        root=dataset_root,
         transforms=make_coco_transforms(transforms_set, max_size=args.max_size, resize=args.augm_resize),
         num_frames=args.num_frames,
+        strict_rgb_check=True,
     )
     return dataset

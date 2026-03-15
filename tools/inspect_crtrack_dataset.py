@@ -103,6 +103,20 @@ def _annotate_text_on_image_top(img, text, font):
     return out
 
 
+
+
+def _build_output_file_path(output_path, meta, frame_id):
+    out = Path(output_path)
+    out_dir = out.parent if out.suffix.lower() == ".png" else out
+
+    scene = str(meta["scene"])
+    clip = str(meta["clip"])
+    v1 = int(meta["view_obj_ids"]["view1"])
+    v2 = int(meta["view_obj_ids"]["view2"])
+    v3 = int(meta["view_obj_ids"]["view3"])
+    filename = f"{scene}_{clip}_{v1}_{v2}_{v3}_{int(frame_id)}.png"
+    return out_dir / filename
+
 def generate_crtrack_preview(
     crtrack_path="data/CRTrack_my1",
     num_frames=8,
@@ -173,7 +187,8 @@ def generate_crtrack_preview(
             canvas.paste(im, (x, y))
         y += h + gap
 
-    out = Path(output_path)
+    frame_id_for_name = rows[0][1]
+    out = _build_output_file_path(output_path, meta, frame_id_for_name)
     out.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(out, format="PNG")
     return out

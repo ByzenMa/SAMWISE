@@ -266,6 +266,7 @@ class SAM2Base(torch.nn.Module):
         backbone_features,
         text_inputs=None,
         motion_inputs=None,
+        view_inputs=None,
         point_inputs=None,
         mask_inputs=None,
         high_res_features=None,
@@ -353,6 +354,10 @@ class SAM2Base(torch.nn.Module):
             motion = motion_inputs,
             masks=sam_mask_prompt,
         )
+        if view_inputs is not None:
+            if view_inputs.dim() == 2:
+                view_inputs = view_inputs.unsqueeze(1)
+            sparse_embeddings = torch.cat([sparse_embeddings, view_inputs], dim=1)
         (
             low_res_multimasks,
             ious,

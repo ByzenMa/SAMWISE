@@ -14,6 +14,32 @@ import util.misc as utils
 from torch.nn import functional as F
 from models.segmentation import loss_masks
 
+
+def reid_cluster_loss(embeddings, labels, margin=0.3):
+    """Simple pairwise clustering-oriented ReID loss.
+
+    Positive pairs are pulled together, negative pairs are pushed apart.
+    """
+    if embeddings is None or labels is None or embeddings.size(0) < 2:
+        return embeddings.new_tensor(0.0) if isinstance(embeddings, torch.Tensor) else torch.tensor(0.0)
+
+    emb = F.normalize(embeddings, dim=1)
+    sim = emb @ emb.t()
+    label_eq = labels.unsqueeze(1).eq(labels.unsqueeze(0))
+    diag = torch.eye(sim.size(0), dtype=torch.bool, device=sim.device)
+    pos_mask = label_eq & (~diag)
+    neg_mask = (~label_eq) & (~diag)
+
+    losses = []
+    if pos_mask.any():
+        losses.append((1.0 - sim[pos_mask]).mean())
+    if neg_mask.any():
+        losses.append(F.relu(sim[neg_mask] - margin).mean())
+    if len(losses) == 0:
+        return sim.new_tensor(0.0)
+    return sum(losses)
+
+
 def train_one_epoch(model: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, max_norm: float = 0,
@@ -32,6 +58,8 @@ def train_one_epoch(model: torch.nn.Module,
 
         if args is not None and args.dataset_file == 'crtrack_test':
             losses = {}
+            reid_embeddings_all = []
+            reid_labels_all = []
             for view_idx in range(len(samples)):
                 view_samples = samples[view_idx].to(device)
                 view_targets = targets[view_idx]
@@ -55,11 +83,19 @@ def train_one_epoch(model: torch.nn.Module,
                     )
                     view_loss_dict["CME_loss"] = CME_loss if not CME_loss.isnan() else torch.tensor(0).to(device)
 
+                if "reid_embeddings" in outputs and "reid_labels" in outputs:
+                    reid_embeddings_all.append(outputs["reid_embeddings"])
+                    reid_labels_all.append(outputs["reid_labels"])
+
                 for k, v in view_loss_dict.items():
                     if k in losses:
                         losses[k] = losses[k] + v
                     else:
                         losses[k] = v
+            if len(reid_embeddings_all) > 0:
+                reid_embeddings = torch.cat(reid_embeddings_all, dim=0)
+                reid_labels = torch.cat(reid_labels_all, dim=0)
+                losses["reid_loss"] = reid_cluster_loss(reid_embeddings, reid_labels)
         else:
             samples = samples.to(device)
             captions = [t["caption"] for t in targets]
@@ -73,6 +109,8 @@ def train_one_epoch(model: torch.nn.Module,
                                             target=torch.tensor(outputs["cme_label"]).long().to(device),
                                             weight=weight)
                 losses.update({"CME_loss": CME_loss if not CME_loss.isnan() else torch.tensor(0).to(device)})
+            if "reid_embeddings" in outputs and "reid_labels" in outputs:
+                losses["reid_loss"] = reid_cluster_loss(outputs["reid_embeddings"], outputs["reid_labels"])
 
         loss_dict = losses
         losses = sum(loss_dict[k] for k in loss_dict.keys())

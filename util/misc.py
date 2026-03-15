@@ -303,6 +303,33 @@ def collate_fn(batch):
     return tuple(batch) 
 
 
+
+
+def collate_fn_crtrack_three_view(batch):
+    """Collate function for CRTrack three-view dataset.
+
+    Input batch item format:
+        (
+          [view1_video, view2_video, view3_video],
+          [view1_target, view2_target, view3_target]
+        )
+
+    Returns:
+        view_samples: list[NestedTensor], len=3
+        view_targets: list[list[dict]], len=3
+    """
+    view_samples = []
+    view_targets = []
+    num_views = len(batch[0][0])
+
+    for view_idx in range(num_views):
+        videos = [item[0][view_idx] for item in batch]
+        targets = [item[1][view_idx] for item in batch]
+        view_samples.append(nested_tensor_from_videos_list(videos))
+        view_targets.append(targets)
+
+    return view_samples, view_targets
+
 def _max_by_axis(the_list):
     # type: (List[List[int]]) -> List[int]
     maxes = the_list[0]

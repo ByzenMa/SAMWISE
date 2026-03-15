@@ -13,11 +13,13 @@ from tools.metrics import calculate_precision_at_k_and_iou_metrics
 import util.misc as utils
 from torch.nn import functional as F
 from models.segmentation import loss_masks
+from models.reid import reid_cluster_loss, build_reid_labels_from_targets
+
 
 def train_one_epoch(model: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, max_norm: float = 0,
-                    lr_scheduler=None, args=None):
+                    lr_scheduler=None, args=None, reid_model=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -29,18 +31,55 @@ def train_one_epoch(model: torch.nn.Module,
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
         step+=1
         model.train()
-        samples = samples.to(device)
-        captions = [t["caption"] for t in targets]
-        outputs = model(samples, captions, targets)
-        losses = {}
-        seg_loss = loss_masks(torch.cat(outputs["masks"]), targets, num_frames=samples.tensors.shape[1])
-        losses.update(seg_loss)
-        if args.use_cme_head and "pred_cme_logits" in outputs:
-            weight = torch.tensor([1., 2.]).to(device)
-            CME_loss = F.cross_entropy(torch.cat(outputs["pred_cme_logits"]), ignore_index=-1,
-                                        target=torch.tensor(outputs["cme_label"]).long().to(device),
-                                        weight=weight)
-            losses.update({"CME_loss": CME_loss if not CME_loss.isnan() else torch.tensor(0).to(device)})
+
+        if args is not None and args.dataset_file == 'crtrack_test':
+            losses = {}
+            for view_idx in range(len(samples)):
+                view_samples = samples[view_idx].to(device)
+                view_targets = targets[view_idx]
+
+                captions = [t["caption"] for t in view_targets]
+                outputs = model(view_samples, captions, view_targets)
+
+                view_loss_dict = loss_masks(
+                    torch.cat(outputs["masks"]),
+                    view_targets,
+                    num_frames=view_samples.tensors.shape[1],
+                )
+
+                if args.use_cme_head and "pred_cme_logits" in outputs:
+                    weight = torch.tensor([1., 2.]).to(device)
+                    CME_loss = F.cross_entropy(
+                        torch.cat(outputs["pred_cme_logits"]),
+                        ignore_index=-1,
+                        target=torch.tensor(outputs["cme_label"]).long().to(device),
+                        weight=weight,
+                    )
+                    view_loss_dict["CME_loss"] = CME_loss if not CME_loss.isnan() else torch.tensor(0).to(device)
+
+                for k, v in view_loss_dict.items():
+                    if k in losses:
+                        losses[k] = losses[k] + v
+                    else:
+                        losses[k] = v
+            if reid_model is not None:
+                view_samples_device = [vs.to(device) for vs in samples]
+                mv_embeddings = reid_model(view_samples_device)
+                labels = build_reid_labels_from_targets(targets[0]).to(device)
+                losses["reid_loss"] = reid_cluster_loss(mv_embeddings, labels)
+        else:
+            samples = samples.to(device)
+            captions = [t["caption"] for t in targets]
+            outputs = model(samples, captions, targets)
+            losses = {}
+            seg_loss = loss_masks(torch.cat(outputs["masks"]), targets, num_frames=samples.tensors.shape[1])
+            losses.update(seg_loss)
+            if args.use_cme_head and "pred_cme_logits" in outputs:
+                weight = torch.tensor([1., 2.]).to(device)
+                CME_loss = F.cross_entropy(torch.cat(outputs["pred_cme_logits"]), ignore_index=-1,
+                                            target=torch.tensor(outputs["cme_label"]).long().to(device),
+                                            weight=weight)
+                losses.update({"CME_loss": CME_loss if not CME_loss.isnan() else torch.tensor(0).to(device)})
 
         loss_dict = losses
         losses = sum(loss_dict[k] for k in loss_dict.keys())

@@ -18,6 +18,7 @@ import datasets.samplers as samplers
 from datasets import build_dataset
 from engine import train_one_epoch
 from models.samwise import build_samwise
+from models.reid import MultiViewReID
 from os.path import join
 import sys
 import opts
@@ -48,11 +49,18 @@ def main(args):
 
     model = build_samwise(args)
     model.to(device)
+    use_reid_branch = args.dataset_file == 'crtrack_test'
+    reid_model = MultiViewReID().to(device) if use_reid_branch else None
 
     model_without_ddp = model
+    reid_model_without_ddp = reid_model
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
+        if use_reid_branch:
+            reid_model = torch.nn.parallel.DistributedDataParallel(reid_model, device_ids=[args.gpu], find_unused_parameters=True)
         model_without_ddp = model.module
+        if use_reid_branch:
+            reid_model_without_ddp = reid_model.module
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     n_parameters_tot = sum(p.numel() for p in model.parameters())
@@ -73,6 +81,12 @@ def main(args):
         'params': head,
         'initial_lr': args.lr
     }]
+    if use_reid_branch:
+        reid_head_params = [p for p in reid_model_without_ddp.parameters() if p.requires_grad]
+        param_list.append({
+            'params': reid_head_params,
+            'initial_lr': args.lr
+        })
 
     optimizer = torch.optim.AdamW(param_list, lr=args.lr, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, args.lr_drop)
@@ -87,14 +101,17 @@ def main(args):
 
     batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=True)
 
+    collate_fn = utils.collate_fn_crtrack_three_view if args.dataset_file == 'crtrack_test' else utils.collate_fn
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
-                                   collate_fn=utils.collate_fn, num_workers=args.num_workers)
+                                   collate_fn=collate_fn, num_workers=args.num_workers)
 
     output_dir = Path(args.output_dir)
     if args.resume:
         checkpoint = torch.load(args.resume, map_location='cpu')
         checkpoint = on_load_checkpoint(model_without_ddp, checkpoint)
         missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
+        if use_reid_branch and 'reid_model' in checkpoint:
+            reid_model_without_ddp.load_state_dict(checkpoint['reid_model'], strict=False)
         unexpected_keys = [k for k in unexpected_keys if not (k.endswith('total_params') or k.endswith('total_ops'))]
         if len(missing_keys) > 0:
             print('Missing Keys: {}'.format(missing_keys))
@@ -131,7 +148,7 @@ def main(args):
             sampler_train.set_epoch(epoch)
         train_stats = train_one_epoch(
                     model, data_loader_train, optimizer, device, epoch,
-                    args.clip_max_norm, lr_scheduler=lr_scheduler, args=args)
+                    args.clip_max_norm, lr_scheduler=lr_scheduler, args=args, reid_model=reid_model)
 
         if args.output_dir:
             print("Save Model")
@@ -140,6 +157,7 @@ def main(args):
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
+                    **({'reid_model': reid_model_without_ddp.state_dict()} if use_reid_branch else {}),
                     'optimizer': optimizer.state_dict(),
                     'lr_scheduler': lr_scheduler.state_dict(),
                     'epoch': epoch,

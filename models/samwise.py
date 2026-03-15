@@ -45,8 +45,17 @@ class SAMWISE(nn.Module):
                                         in_channels_vis=image_encoder_embed_dim[fusion_stages[i]-1],
                                         in_channels_txt=text_encoder_embed_dim,
                                         adapter_channels=adapter_dim,
+                                        view_token_dim=sam.sam_prompt_embed_dim,
                                         HSA_patch_size=args.HSA_patch_size[i] if len(args.HSA_patch_size)>1 else args.HSA_patch_size[0],
                                         args=args))
+
+        # learnable view embedding token used in CMT stage and mask decoder stage
+        self.view_embeddings = nn.Embedding(3, self.sam.sam_prompt_embed_dim)
+        self.view_prompt_mlp = nn.Sequential(
+            nn.Linear(self.sam.sam_prompt_embed_dim, self.sam.sam_prompt_embed_dim),
+            nn.GELU(),
+            nn.Linear(self.sam.sam_prompt_embed_dim, self.sam.sam_prompt_embed_dim),
+        )
 
         self.memory_bank = {} # to store all frames memory
 
@@ -71,7 +80,7 @@ class SAMWISE(nn.Module):
         """
 
         # samples: tensor B*T, C, H, W
-        backbone_output: BackboneOutput = self.compute_backbone_output(samples, captions)
+        backbone_output: BackboneOutput = self.compute_backbone_output(samples, captions, targets)
         B, T = backbone_output.B, backbone_output.T
         outputs = {"masks": []}
 
@@ -152,25 +161,46 @@ class SAMWISE(nn.Module):
         txt = x.transpose(0, 1)  # B x T x C -> T x B x C
         return txt, attention_mask, input_ids
     
-    def compute_backbone_output(self, samples, captions):
+    @staticmethod
+    def _view_name_to_id(view_name):
+        mapping = {"view1": 0, "view2": 1, "view3": 2}
+        return mapping.get(str(view_name).lower(), 0)
+
+    def _build_view_embedding_tokens(self, targets, B, T, device):
+        # one view id per sample in current batch
+        view_ids = [self._view_name_to_id(t.get("view_name", "view1")) for t in targets]
+        view_ids = torch.tensor(view_ids, dtype=torch.long, device=device)
+        view_tokens_b = self.view_embeddings(view_ids)  # [B, C]
+        view_tokens_bt = view_tokens_b.repeat_interleave(T, dim=0)  # [B*T, C]
+        return view_tokens_b, view_tokens_bt
+
+    def _scale_view_prompt(self, view_tokens):
+        return self.view_prompt_mlp(view_tokens)
+
+    def compute_backbone_output(self, samples, captions, targets):
         samples, BT, orig_size = self.preprocess_visual_features(samples, self.image_size)
         txt, attention_mask, input_ids = self.preprocess_text_features(captions)
 
         B, T = BT
+        view_tokens_b, view_tokens_bt = self._build_view_embedding_tokens(targets, B, T, samples.device)
 
         if self.motion_prompt:
-            vis_outs, state, txt = self._early_fusion_stage(T, samples, txt, attention_mask)
+            vis_outs, state, txt, view_tokens_b = self._early_fusion_stage(T, samples, txt, attention_mask, view_tokens_b)
             motion_prompts = self.extract_motion_prompts(captions, input_ids)
             motion_state = [txt_i[motion_prompts[i].bool()] for i, txt_i in enumerate(txt)]
             motion_state = torch.cat(motion_state).repeat_interleave(T, 0)
         else:
-            vis_outs, state = self._early_fusion_stage(T, samples, txt, attention_mask)
+            vis_outs, state, view_tokens_b = self._early_fusion_stage(T, samples, txt, attention_mask, view_tokens_b)
             motion_state = torch.empty(1)
+
+        view_tokens_bt = view_tokens_b.repeat_interleave(T, dim=0)
+        # add view-aware token from CMT stage to decoder text state
+        state = state + view_tokens_bt
 
         # forward FPN
         backbone_out = self._forward_fpn(vis_outs)
         _, vision_feats, vision_pos_embeds, feat_sizes = self.sam._prepare_backbone_features(backbone_out)
-        out = BackboneOutput(B, T, orig_size, vision_feats, vision_pos_embeds, feat_sizes, state, motion_state)
+        out = BackboneOutput(B, T, orig_size, vision_feats, vision_pos_embeds, feat_sizes, state, motion_state, view_tokens_bt)
         return out
 
     def compute_decoder_out_w_mem(self, backbone_out: BackboneOutput, idx: int, memory_idx: int, memory_bank: dict):
@@ -192,6 +222,7 @@ class SAMWISE(nn.Module):
             backbone_features=pix_feat_with_mem,
             text_inputs=backbone_out.state[idx:idx+1],
             motion_inputs=backbone_out.motion_state[idx:idx+1] if self.motion_prompt else None,
+            view_inputs=self._scale_view_prompt(backbone_out.view_embeddings[idx:idx+1]),
             high_res_features=high_res_features,
         )
         decoder_out.compute_mask(self.image_size, backbone_out.orig_size[idx])
@@ -206,6 +237,7 @@ class SAMWISE(nn.Module):
         decoder_out: DecoderOutput = self.sam._forward_sam_heads(
             backbone_features=pix_feat_no_mem,
             text_inputs=backbone_out.state[idx:idx+1],
+            view_inputs=self._scale_view_prompt(backbone_out.view_embeddings[idx:idx+1]),
             high_res_features=high_res_features,
         )
         decoder_out.compute_mask(self.image_size, backbone_out.orig_size[idx])
@@ -263,7 +295,7 @@ class SAMWISE(nn.Module):
                 x = layers[idx](x)
         return x
 
-    def _early_fusion_stage(self, T, samples, txt, attention_mask):
+    def _early_fusion_stage(self, T, samples, txt, attention_mask, view_tokens_b):
         vis = self.sam.image_encoder.trunk.patch_embed(samples)
         vis = vis + self.sam.image_encoder.trunk._get_pos_embed(vis.shape[1:3])
         vis_outs = []
@@ -280,7 +312,9 @@ class SAMWISE(nn.Module):
             if i in self.fusion_stages:
                 v = vis.clone()
                 t = txt.clone()
-                v, t = self.cmt_adapters[self.fusion_stages.index(i)](v.permute(0, 3, 1, 2), T, t)
+                v, t, view_tokens_b = self.cmt_adapters[self.fusion_stages.index(i)](
+                    v.permute(0, 3, 1, 2), T, t, view_tokens=view_tokens_b
+                )
                 vis = vis + v.permute(0, 2, 3, 1)
                 txt = txt + t
 
@@ -292,8 +326,8 @@ class SAMWISE(nn.Module):
             state = state.repeat_interleave(T, 0)
 
         if self.motion_prompt:
-            return vis_outs, state, txt
-        return vis_outs, state
+            return vis_outs, state, txt, view_tokens_b
+        return vis_outs, state, view_tokens_b
 
     def _forward_fpn(self, vis_outs):
         features, pos = self.sam.image_encoder.neck(vis_outs)
@@ -470,7 +504,7 @@ def build_samwise(args):
 
     # freeze all the weights except CMT adapter and Conditional Memory Encoder
     for param_name, param in model.named_parameters():
-        if 'adapter' not in param_name and 'conditional_memory_encoder' not in param_name and 'project_text' not in param_name:
+        if 'adapter' not in param_name and 'conditional_memory_encoder' not in param_name and 'project_text' not in param_name and 'view_embeddings' not in param_name and 'view_prompt_mlp' not in param_name :
             param.requires_grad = False
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"

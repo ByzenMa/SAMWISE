@@ -13,7 +13,7 @@ from tools.metrics import calculate_precision_at_k_and_iou_metrics
 import util.misc as utils
 from torch.nn import functional as F
 from models.segmentation import loss_masks
-from models.reid import reid_cluster_loss
+from models.reid import reid_cluster_loss, build_reid_labels_from_targets
 
 
 def train_one_epoch(model: torch.nn.Module,
@@ -65,7 +65,7 @@ def train_one_epoch(model: torch.nn.Module,
             if reid_model is not None:
                 view_samples_device = [vs.to(device) for vs in samples]
                 mv_embeddings = reid_model(view_samples_device)
-                labels = torch.tensor([int(t.get("exp_id", i)) for i, t in enumerate(targets[0])], device=device, dtype=torch.long)
+                labels = build_reid_labels_from_targets(targets[0]).to(device)
                 losses["reid_loss"] = reid_cluster_loss(mv_embeddings, labels)
         else:
             samples = samples.to(device)

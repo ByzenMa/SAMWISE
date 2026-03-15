@@ -66,3 +66,11 @@ def reid_cluster_loss(mv_embeddings, labels, margin=0.3):
     if len(losses) == 0:
         return sim.new_tensor(0.0)
     return sum(losses)
+
+
+def build_reid_labels_from_targets(view_targets):
+    """Build per-sample ReID labels from one-view target list (batch dimension)."""
+    labels = []
+    for i, t in enumerate(view_targets):
+        labels.append(int(t.get("exp_id", i)))
+    return torch.tensor(labels, dtype=torch.long)

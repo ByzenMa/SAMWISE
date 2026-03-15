@@ -49,15 +49,18 @@ def main(args):
 
     model = build_samwise(args)
     model.to(device)
-    reid_model = MultiViewReID().to(device)
+    use_reid_branch = args.dataset_file == 'crtrack_test'
+    reid_model = MultiViewReID().to(device) if use_reid_branch else None
 
     model_without_ddp = model
     reid_model_without_ddp = reid_model
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
-        reid_model = torch.nn.parallel.DistributedDataParallel(reid_model, device_ids=[args.gpu], find_unused_parameters=True)
+        if use_reid_branch:
+            reid_model = torch.nn.parallel.DistributedDataParallel(reid_model, device_ids=[args.gpu], find_unused_parameters=True)
         model_without_ddp = model.module
-        reid_model_without_ddp = reid_model.module
+        if use_reid_branch:
+            reid_model_without_ddp = reid_model.module
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
     n_parameters_tot = sum(p.numel() for p in model.parameters())
@@ -74,14 +77,16 @@ def main(args):
     print("Trainable parameters: ", sum(p.numel() for p in head))
     print("Parameters fixed: ", sum(p.numel() for p in fix))
 
-    reid_head_params = [p for p in reid_model_without_ddp.parameters() if p.requires_grad]
     param_list = [{
         'params': head,
         'initial_lr': args.lr
-    }, {
-        'params': reid_head_params,
-        'initial_lr': args.lr
     }]
+    if use_reid_branch:
+        reid_head_params = [p for p in reid_model_without_ddp.parameters() if p.requires_grad]
+        param_list.append({
+            'params': reid_head_params,
+            'initial_lr': args.lr
+        })
 
     optimizer = torch.optim.AdamW(param_list, lr=args.lr, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, args.lr_drop)
@@ -105,7 +110,7 @@ def main(args):
         checkpoint = torch.load(args.resume, map_location='cpu')
         checkpoint = on_load_checkpoint(model_without_ddp, checkpoint)
         missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
-        if 'reid_model' in checkpoint:
+        if use_reid_branch and 'reid_model' in checkpoint:
             reid_model_without_ddp.load_state_dict(checkpoint['reid_model'], strict=False)
         unexpected_keys = [k for k in unexpected_keys if not (k.endswith('total_params') or k.endswith('total_ops'))]
         if len(missing_keys) > 0:
@@ -152,7 +157,7 @@ def main(args):
             for checkpoint_path in checkpoint_paths:
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
-                    'reid_model': reid_model_without_ddp.state_dict(),
+                    **({'reid_model': reid_model_without_ddp.state_dict()} if use_reid_branch else {}),
                     'optimizer': optimizer.state_dict(),
                     'lr_scheduler': lr_scheduler.state_dict(),
                     'epoch': epoch,

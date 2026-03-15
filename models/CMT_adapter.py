@@ -11,6 +11,7 @@ class CMT_adapter(nn.Module):
                  in_channels_vis,
                  in_channels_txt,
                  adapter_channels,
+                 view_token_dim,
                  HSA_patch_size=2,
                  args=None):
         super().__init__()
@@ -25,6 +26,7 @@ class CMT_adapter(nn.Module):
 
         self.proj_text_down = nn.Sequential(nn.Linear(in_channels_txt, adapter_channels, bias=False)) # 512
         self.proj_text_up = nn.Sequential(nn.Linear(adapter_channels, in_channels_txt, bias=False))
+        self.proj_view_down = nn.Linear(view_token_dim, adapter_channels, bias=False)
         self.ca_V2T = AdapterCA(d_model=adapter_channels, nhead=8, dropout=0.0)
         self.ca_T2V = AdapterCA(d_model=adapter_channels, nhead=8, dropout=0.0)
 
@@ -38,12 +40,21 @@ class CMT_adapter(nn.Module):
         self.use_HSA = args.HSA
         self.HSA_patch_size = HSA_patch_size
 
-    def forward(self, vis, clip_length, text):
+    def forward(self, vis, clip_length, text, view_tokens=None):
         BT, C, H, W = vis.size()
         # proj down the 2 modalities
         x = self.proj_vis_down(vis)
         x = einops.rearrange(x, '(b t) c h w -> (h w) (b t) c', t=clip_length)
         t = self.proj_text_down(text)
+
+        view_token_bt = None
+        view_token_b = None
+        if view_tokens is not None:
+            # view_tokens: [B, Cv] -> projected tokens in adapter channel space
+            view_token_b = self.proj_view_down(view_tokens)  # [B, Ca]
+            view_token_bt = view_token_b.repeat_interleave(clip_length, dim=0)  # [BT, Ca]
+            x = x + view_token_bt.unsqueeze(0)
+            t = t + view_token_b.unsqueeze(0)
 
         # Cross-Modal Temporal Attention
         x_atten = x
@@ -59,10 +70,18 @@ class CMT_adapter(nn.Module):
             x_hsa = einops.rearrange(x_hsa, 'b t (h1 w1) (h w) c -> (h1 h w1 w) ( b t) c', h1=int(H/self.HSA_patch_size), w1=int(W/self.HSA_patch_size), h=self.HSA_patch_size, w=self.HSA_patch_size)
             x_atten = x_atten + x_hsa
 
-        # cross modal adaptation
-        x_atten = self.ca_V2T(x_atten, memory=t.repeat_interleave(clip_length, 1)) # HW, BT, Ca -> BT, Ca, H, W
+        # cross modal adaptation with view-token-aware memory augmentation
+        t_memory = t.repeat_interleave(clip_length, 1)
+        if view_token_bt is not None:
+            t_memory = torch.cat([t_memory, view_token_bt.unsqueeze(0)], dim=0)
+
+        x_atten = self.ca_V2T(x_atten, memory=t_memory)  # HW, BT, Ca -> BT, Ca, H, W
         x_atten = einops.rearrange(x_atten, '(h w) (b t) c -> (b t) c h w', h=H, w=W, t=clip_length)
-        t_atten = self.ca_T2V(t, einops.rearrange(x, 'hw (b t) c -> hw b t c', t=clip_length).mean(2))  # einops.rearrange(x, '(h w) (b t) c -> (h w) b t c', t=T)
+
+        v_memory = einops.rearrange(x, 'hw (b t) c -> hw b t c', t=clip_length).mean(2)
+        if view_token_b is not None:
+            v_memory = torch.cat([v_memory, view_token_b.unsqueeze(0)], dim=0)
+        t_atten = self.ca_T2V(t, v_memory)  # einops.rearrange(x, '(h w) (b t) c -> (h w) b t c', t=T)
 
         # proj up the 2 modalities
         x_out = self.proj_vis_up(x_atten)

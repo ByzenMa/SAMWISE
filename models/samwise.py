@@ -45,6 +45,7 @@ class SAMWISE(nn.Module):
                                         in_channels_vis=image_encoder_embed_dim[fusion_stages[i]-1],
                                         in_channels_txt=text_encoder_embed_dim,
                                         adapter_channels=adapter_dim,
+                                        view_token_dim=sam.sam_prompt_embed_dim,
                                         HSA_patch_size=args.HSA_patch_size[i] if len(args.HSA_patch_size)>1 else args.HSA_patch_size[0],
                                         args=args))
 
@@ -161,36 +162,36 @@ class SAMWISE(nn.Module):
         return mapping.get(str(view_name).lower(), 0)
 
     def _build_view_embedding_tokens(self, targets, B, T, device):
-        # one view id per sample in current batch; repeat across temporal dimension T
+        # one view id per sample in current batch
         view_ids = [self._view_name_to_id(t.get("view_name", "view1")) for t in targets]
         view_ids = torch.tensor(view_ids, dtype=torch.long, device=device)
-        view_tokens = self.view_embeddings(view_ids)  # [B, C]
-        view_tokens = view_tokens.repeat_interleave(T, dim=0)  # [B*T, C]
-        return view_tokens
+        view_tokens_b = self.view_embeddings(view_ids)  # [B, C]
+        view_tokens_bt = view_tokens_b.repeat_interleave(T, dim=0)  # [B*T, C]
+        return view_tokens_b, view_tokens_bt
 
     def compute_backbone_output(self, samples, captions, targets):
         samples, BT, orig_size = self.preprocess_visual_features(samples, self.image_size)
         txt, attention_mask, input_ids = self.preprocess_text_features(captions)
 
         B, T = BT
-        view_tokens = self._build_view_embedding_tokens(targets, B, T, samples.device)
+        view_tokens_b, view_tokens_bt = self._build_view_embedding_tokens(targets, B, T, samples.device)
 
         if self.motion_prompt:
-            vis_outs, state, txt = self._early_fusion_stage(T, samples, txt, attention_mask)
+            vis_outs, state, txt = self._early_fusion_stage(T, samples, txt, attention_mask, view_tokens_b)
             motion_prompts = self.extract_motion_prompts(captions, input_ids)
             motion_state = [txt_i[motion_prompts[i].bool()] for i, txt_i in enumerate(txt)]
             motion_state = torch.cat(motion_state).repeat_interleave(T, 0)
         else:
-            vis_outs, state = self._early_fusion_stage(T, samples, txt, attention_mask)
+            vis_outs, state = self._early_fusion_stage(T, samples, txt, attention_mask, view_tokens_b)
             motion_state = torch.empty(1)
 
         # add view-aware token from CMT stage to decoder text state
-        state = state + view_tokens
+        state = state + view_tokens_bt
 
         # forward FPN
         backbone_out = self._forward_fpn(vis_outs)
         _, vision_feats, vision_pos_embeds, feat_sizes = self.sam._prepare_backbone_features(backbone_out)
-        out = BackboneOutput(B, T, orig_size, vision_feats, vision_pos_embeds, feat_sizes, state, motion_state, view_tokens)
+        out = BackboneOutput(B, T, orig_size, vision_feats, vision_pos_embeds, feat_sizes, state, motion_state, view_tokens_bt)
         return out
 
     def compute_decoder_out_w_mem(self, backbone_out: BackboneOutput, idx: int, memory_idx: int, memory_bank: dict):
@@ -285,7 +286,7 @@ class SAMWISE(nn.Module):
                 x = layers[idx](x)
         return x
 
-    def _early_fusion_stage(self, T, samples, txt, attention_mask):
+    def _early_fusion_stage(self, T, samples, txt, attention_mask, view_tokens_b):
         vis = self.sam.image_encoder.trunk.patch_embed(samples)
         vis = vis + self.sam.image_encoder.trunk._get_pos_embed(vis.shape[1:3])
         vis_outs = []
@@ -302,7 +303,7 @@ class SAMWISE(nn.Module):
             if i in self.fusion_stages:
                 v = vis.clone()
                 t = txt.clone()
-                v, t = self.cmt_adapters[self.fusion_stages.index(i)](v.permute(0, 3, 1, 2), T, t)
+                v, t = self.cmt_adapters[self.fusion_stages.index(i)](v.permute(0, 3, 1, 2), T, t, view_tokens=view_tokens_b)
                 vis = vis + v.permute(0, 2, 3, 1)
                 txt = txt + t
 

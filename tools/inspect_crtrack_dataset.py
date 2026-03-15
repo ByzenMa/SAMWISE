@@ -130,15 +130,22 @@ def generate_crtrack_preview(
     col_titles = ["Original (Real RGB)", "+Mask", "+BBox"]
     view_names = dataset.VIEW_NAMES
 
+    # pick one aligned position across views so frame indices correspond by order.
+    # this avoids each view choosing an unrelated random frame.
+    min_len = min(len(meta["frame_ids_per_view"][v]) for v in view_names)
+    if min_len == 0:
+        raise RuntimeError("Invalid sample: at least one view has zero frames after filtering.")
+    aligned_pos = random.randrange(min_len)
+
     rows = []
     for view_name in view_names:
-        frame_id = random.choice(meta["frame_ids_per_view"][view_name])
+        frame_id = meta["frame_ids_per_view"][view_name][aligned_pos]
         original, mask, box = _build_real_view_frame_and_ann(dataset, meta, view_name, frame_id)
         with_mask = _overlay_mask(original, mask)
         with_box = _draw_bbox(original, box)
-        rows.append((view_name, original, with_mask, with_box))
+        rows.append((view_name, frame_id, original, with_mask, with_box))
 
-    w, h = rows[0][1].size
+    w, h = rows[0][2].size
     gap = 20
     left_pad = 18
     top_pad = 18
@@ -156,9 +163,9 @@ def generate_crtrack_preview(
         draw.text((x + 8, y + 6), t, fill=(10, 10, 10), font=title_font)
 
     y += row_title_h
-    for view_name, im0, im1, im2 in rows:
+    for view_name, frame_id, im0, im1, im2 in rows:
         view_text = meta.get("view_texts", {}).get(view_name, "")
-        txt = f"{view_name}: {_fit_text(view_text)}"
+        txt = f"{view_name} | frame {frame_id}: {_fit_text(view_text)}"
         im0 = _annotate_text_on_image_top(im0, txt, text_font)
 
         for i, im in enumerate([im0, im1, im2]):

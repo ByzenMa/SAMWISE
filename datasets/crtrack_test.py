@@ -5,6 +5,7 @@ import csv
 import logging
 import random
 import pickle
+import re
 
 import numpy as np
 import torch
@@ -37,6 +38,7 @@ class CRTrackTestDataset(Dataset):
 
         self.images_root = self.root / "images" / "train"
         self.cross_view_root = self.root / "ids_with_text_cross_view"
+        self.cross_view_selected_root = self.root / "ids_with_text_cross_view_selected"
 
         self.metas = []
         self.view_data_cache = {}
@@ -46,19 +48,74 @@ class CRTrackTestDataset(Dataset):
         print("\n clip num: ", len(self.metas))
         print("\n")
 
-    def _prepare_metas(self):
-        csv_files = sorted(self.cross_view_root.glob("*/*/*_id_match_texts*.csv"))
+    def _select_csv_files(self):
+        # Prefer selected annotations when available.
+        if self.cross_view_selected_root.exists():
+            csv_files = sorted(self.cross_view_selected_root.rglob("*_id_match_texts*.csv"))
+            if len(csv_files) > 0:
+                return csv_files, True
 
+        csv_files = sorted(self.cross_view_root.glob("*/*/*_id_match_texts*.csv"))
         selected_csv = {}
         for csv_file in csv_files:
             clip_key = str(csv_file.parent)
             if clip_key not in selected_csv or csv_file.name.endswith("_with_txt.csv"):
                 selected_csv[clip_key] = csv_file
+        return list(selected_csv.values()), False
+
+    def _extract_scene_clip(self, csv_path, use_selected):
+        if not use_selected:
+            return csv_path.parents[1].name, csv_path.parent.name
+
+        # Example: Floor_clip01_id_match_texts.csv
+        stem = csv_path.stem
+        m = re.match(r"^(?P<scene>.+)_clip(?P<clip_no>\d+)_id_match_texts", stem, flags=re.IGNORECASE)
+        if m:
+            scene = m.group("scene")
+            clip = f"clip_{int(m.group('clip_no')):02d}"
+            return scene, clip
+
+        # fallback: try directory names if file naming doesn't match
+        return csv_path.parents[1].name if len(csv_path.parents) > 1 else "unknown_scene", csv_path.parent.name
+
+    @staticmethod
+    def _parse_frame_id_list(raw):
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        if s == "" or s.lower() in {"nan", "none", "null"}:
+            return None
+
+        tokens = [t for t in re.split(r"[^0-9]+", s) if t != ""]
+        if len(tokens) == 0:
+            return None
+        return [int(t) for t in tokens]
+
+    def _get_selected_frame_ids_for_view(self, row, view_name):
+        candidate_keys = [
+            f"{view_name}_frame_ids",
+            f"{view_name}_frames",
+            f"{view_name}_indices",
+            f"{view_name}_idxs",
+            f"{view_name}_frame_idx",
+            f"{view_name}_frame_id",
+        ]
+
+        for key in candidate_keys:
+            if key in row:
+                parsed = self._parse_frame_id_list(row.get(key))
+                if parsed is not None:
+                    return parsed
+        return None
+
+    def _prepare_metas(self):
+        csv_files, use_selected = self._select_csv_files()
 
         dropped_for_missing_rgb = 0
-        for csv_path in selected_csv.values():
-            scene = csv_path.parents[1].name
-            clip = csv_path.parent.name
+        dropped_for_empty_view_frames = 0
+
+        for csv_path in csv_files:
+            scene, clip = self._extract_scene_clip(csv_path, use_selected)
             pkl_dir = self.images_root / scene / clip
 
             view_pkls = {
@@ -67,25 +124,13 @@ class CRTrackTestDataset(Dataset):
                 "view3": pkl_dir / f"{scene}_View3_reprompt_rle.pkl",
             }
             if not all(path.exists() for path in view_pkls.values()):
-                continue
-
-            frame_ids = self._get_frame_ids(view_pkls)
-            if len(frame_ids) == 0:
+                LOGGER.warning("Skip %s/%s: missing one or more view RLE pkl files.", scene, clip)
                 continue
 
             rgb_index = self._build_rgb_index(scene, clip)
-            rgb_common = set(frame_ids)
-            for view_name in self.VIEW_NAMES:
-                rgb_common &= set(rgb_index[view_name].keys())
-            frame_ids = sorted(rgb_common)
-            if self.strict_rgb_check and len(frame_ids) == 0:
-                dropped_for_missing_rgb += 1
-                LOGGER.warning(
-                    "Drop clip %s/%s: no common real RGB frames found for all three views.",
-                    scene,
-                    clip,
-                )
-                continue
+            mask_frame_ids_per_view = {
+                view_name: sorted(self._get_view_data(view_pkls[view_name]).keys()) for view_name in self.VIEW_NAMES
+            }
 
             with open(csv_path, "r", encoding="utf-8-sig", newline="") as fp:
                 reader = csv.DictReader(fp)
@@ -94,11 +139,40 @@ class CRTrackTestDataset(Dataset):
                         continue
 
                     caption = self._build_caption(row)
-                    view_texts = {
-                        "view1": " ".join(str(row.get("view1_txt", "")).lower().split()),
-                        "view2": " ".join(str(row.get("view2_txt", "")).lower().split()),
-                        "view3": " ".join(str(row.get("view3_txt", "")).lower().split()),
-                    }
+                    # In selected cross-view setting, one text is shared by all 3 views.
+                    view_texts = {view_name: caption for view_name in self.VIEW_NAMES}
+
+                    frame_ids_per_view = {}
+                    has_empty_view = False
+                    for view_name in self.VIEW_NAMES:
+                        selected_ids = self._get_selected_frame_ids_for_view(row, view_name)
+                        base_ids = set(mask_frame_ids_per_view[view_name])
+                        if selected_ids is not None:
+                            base_ids &= set(selected_ids)
+
+                        if self.strict_rgb_check:
+                            base_ids &= set(rgb_index[view_name].keys())
+
+                        filtered = sorted(base_ids)
+                        frame_ids_per_view[view_name] = filtered
+                        if len(filtered) == 0:
+                            has_empty_view = True
+
+                    if has_empty_view:
+                        dropped_for_empty_view_frames += 1
+                        LOGGER.warning(
+                            "Drop sample %s/%s row=%s: empty usable frames in at least one view after filtering.",
+                            scene,
+                            clip,
+                            row.get("id", "unknown"),
+                        )
+                        continue
+
+                    # Optional strict check: all views must have RGB-backed frames.
+                    if self.strict_rgb_check and not all(len(frame_ids_per_view[v]) > 0 for v in self.VIEW_NAMES):
+                        dropped_for_missing_rgb += 1
+                        continue
+
                     self.metas.append(
                         {
                             "scene": scene,
@@ -109,14 +183,16 @@ class CRTrackTestDataset(Dataset):
                                 "view2": int(row["view2"]),
                                 "view3": int(row["view3"]),
                             },
-                            "frame_ids": frame_ids,
+                            "frame_ids_per_view": frame_ids_per_view,
                             "view_texts": view_texts,
                             "view_pkls": {k: str(v) for k, v in view_pkls.items()},
                         }
                     )
 
         if dropped_for_missing_rgb > 0:
-            LOGGER.warning("Dropped %d clip(s) due to missing real RGB frames.", dropped_for_missing_rgb)
+            LOGGER.warning("Dropped %d sample(s) due to missing real RGB frames.", dropped_for_missing_rgb)
+        if dropped_for_empty_view_frames > 0:
+            LOGGER.warning("Dropped %d sample(s) due to empty per-view frame ids.", dropped_for_empty_view_frames)
 
     @staticmethod
     def _has_valid_view_ids(row):
@@ -144,13 +220,6 @@ class CRTrackTestDataset(Dataset):
             with open(pkl_path, "rb") as fp:
                 self.view_data_cache[pkl_path] = pickle.load(fp)
         return self.view_data_cache[pkl_path]
-
-    def _get_frame_ids(self, view_pkls):
-        frame_sets = []
-        for view_name in self.VIEW_NAMES:
-            view_data = self._get_view_data(view_pkls[view_name])
-            frame_sets.append(set(view_data.keys()))
-        return sorted(frame_sets[0].intersection(frame_sets[1]).intersection(frame_sets[2]))
 
     def _build_rgb_index(self, scene, clip):
         key = (scene, clip)
@@ -310,18 +379,19 @@ class CRTrackTestDataset(Dataset):
         instance_check = False
         while not instance_check:
             meta = self.metas[idx]
-            frame_ids = meta["frame_ids"]
-            if len(frame_ids) == 0:
-                idx = random.randint(0, self.__len__() - 1)
-                continue
-
-            center_pos = random.randint(0, len(frame_ids) - 1)
-            sample_pos = FrameSampler.sample_global_frames(center_pos, len(frame_ids), self.num_frames)
-            sample_frame_ids = [frame_ids[p] for p in sample_pos]
 
             view_imgs, view_targets = [], []
             missing_rgb = False
             for view_name in self.VIEW_NAMES:
+                frame_ids = meta["frame_ids_per_view"][view_name]
+                if len(frame_ids) == 0:
+                    missing_rgb = True
+                    break
+
+                center_pos = random.randint(0, len(frame_ids) - 1)
+                sample_pos = FrameSampler.sample_global_frames(center_pos, len(frame_ids), self.num_frames)
+                sample_frame_ids = [frame_ids[p] for p in sample_pos]
+
                 imgs, target = self._build_single_view_sample(meta, sample_frame_ids, view_name, idx)
                 if imgs is None:
                     missing_rgb = True

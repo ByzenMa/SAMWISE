@@ -4,7 +4,7 @@ It saves one PNG with side-by-side comparisons for 3 views:
 - original real image (RGB frame)
 - image + mask overlay
 - image + bbox
-and appends the corresponding view text under each view row.
+and overlays the corresponding view text above each original view image.
 """
 
 import argparse
@@ -126,13 +126,13 @@ def generate_crtrack_preview(
 
     idx = random.randrange(len(dataset))
     meta = dataset.metas[idx]
-    frame_id = random.choice(meta["frame_ids"])
 
     col_titles = ["Original (Real RGB)", "+Mask", "+BBox"]
     view_names = dataset.VIEW_NAMES
 
     rows = []
     for view_name in view_names:
+        frame_id = random.choice(meta["frame_ids_per_view"][view_name])
         original, mask, box = _build_real_view_frame_and_ann(dataset, meta, view_name, frame_id)
         with_mask = _overlay_mask(original, mask)
         with_box = _draw_bbox(original, box)
@@ -143,10 +143,8 @@ def generate_crtrack_preview(
     left_pad = 18
     top_pad = 18
     row_title_h = 28
-    text_h = 28
-
     canvas_w = left_pad * 2 + (w * 3) + gap * 2
-    canvas_h = top_pad * 2 + row_title_h + len(rows) * (h + text_h + gap)
+    canvas_h = top_pad * 2 + row_title_h + len(rows) * (h + gap)
     canvas = Image.new("RGB", (canvas_w, canvas_h), (245, 245, 245))
     draw = ImageDraw.Draw(canvas)
     title_font = _load_font(font_size=30)
@@ -166,7 +164,7 @@ def generate_crtrack_preview(
         for i, im in enumerate([im0, im1, im2]):
             x = left_pad + i * (w + gap)
             canvas.paste(im, (x, y))
-        y += h + text_h + gap
+        y += h + gap
 
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)

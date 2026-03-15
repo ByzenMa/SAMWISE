@@ -87,8 +87,9 @@ def main(args):
 
     batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, args.batch_size, drop_last=True)
 
+    collate_fn = utils.collate_fn_crtrack_three_view if args.dataset_file == 'crtrack_test' else utils.collate_fn
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
-                                   collate_fn=utils.collate_fn, num_workers=args.num_workers)
+                                   collate_fn=collate_fn, num_workers=args.num_workers)
 
     output_dir = Path(args.output_dir)
     if args.resume:

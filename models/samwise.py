@@ -12,7 +12,6 @@ import py3_wget
 from models.conditional_memory_encoder import ConditionalMemoryEncoder
 from fairseq.models.roberta import RobertaModel
 from models.model_utils import BackboneOutput, DecoderOutput, get_same_object_labels
-from models.reid_head import SpatialTemporalReIDHead
 from transformers import RobertaTokenizerFast
 
 
@@ -34,7 +33,6 @@ class SAMWISE(nn.Module):
         self.tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
         self.sam = sam
         self.conditional_memory_encoder = conditional_memory_encoder
-        self.reid_head = SpatialTemporalReIDHead(sam.hidden_dim, emb_dim=sam.hidden_dim)
         if args.motion_prompt:
             # load nlp dict to identify verbs
             self.nlp_dict = spacy.load('en_core_web_sm')
@@ -84,7 +82,7 @@ class SAMWISE(nn.Module):
         # samples: tensor B*T, C, H, W
         backbone_output: BackboneOutput = self.compute_backbone_output(samples, captions, targets)
         B, T = backbone_output.B, backbone_output.T
-        outputs = {"masks": [], "reid_embeddings": [], "reid_labels": []}
+        outputs = {"masks": []}
 
         for video_record in range(B):
             if self.training or T==1: # T == 1 for pre-training, no propagation from memory bank
@@ -92,7 +90,6 @@ class SAMWISE(nn.Module):
             elif targets[0]['frame_ids'][0] == 0:  # it's the first frame of a new video
                 self.memory_bank, self.last_frame_cme_applied = {}, 0
 
-            per_video_reid = []
             for frame_idx in range(T):
                 idx = video_record * T + frame_idx
                 # use relative IDX in the clip
@@ -130,29 +127,9 @@ class SAMWISE(nn.Module):
                             outputs["pred_cme_logits"].append(pred_cme_logits)
                             outputs["cme_label"].append(cme_label)
 
-                view_id = self._view_name_to_id(targets[video_record].get("view_name", "view1"))
-                frame_idx_tensor = torch.tensor([memory_idx], device=decoder_out_w_mem.obj_ptr.device)
-                view_id_tensor = torch.tensor([view_id], device=decoder_out_w_mem.obj_ptr.device)
-                frame_reid = self.reid_head(
-                    decoder_out_w_mem.obj_ptr,
-                    view_ids=view_id_tensor,
-                    frame_indices=frame_idx_tensor,
-                    num_frames=T,
-                )
-                per_video_reid.append(frame_reid)
-
                 mem_dict_w_mem = self.compute_memory_bank_dict(decoder_out_w_mem, current_vision_feats, backbone_output.feat_sizes)
                 self.memory_bank[memory_idx] = mem_dict_w_mem
                 outputs["masks"].append(decoder_out_w_mem.masks)
-
-            if len(per_video_reid) > 0:
-                video_reid = torch.cat(per_video_reid, dim=0).mean(dim=0, keepdim=True)
-                outputs["reid_embeddings"].append(video_reid)
-                outputs["reid_labels"].append(int(targets[video_record].get("exp_id", video_record)))
-
-        if len(outputs["reid_embeddings"]) > 0:
-            outputs["reid_embeddings"] = torch.cat(outputs["reid_embeddings"], dim=0)
-            outputs["reid_labels"] = torch.tensor(outputs["reid_labels"], device=outputs["reid_embeddings"].device, dtype=torch.long)
 
         masks = torch.cat(outputs["masks"])
         if self.training:
@@ -527,7 +504,7 @@ def build_samwise(args):
 
     # freeze all the weights except CMT adapter and Conditional Memory Encoder
     for param_name, param in model.named_parameters():
-        if 'adapter' not in param_name and 'conditional_memory_encoder' not in param_name and 'project_text' not in param_name and 'view_embeddings' not in param_name and 'view_prompt_mlp' not in param_name and 'reid_head' not in param_name:
+        if 'adapter' not in param_name and 'conditional_memory_encoder' not in param_name and 'project_text' not in param_name and 'view_embeddings' not in param_name and 'view_prompt_mlp' not in param_name :
             param.requires_grad = False
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"

@@ -111,7 +111,6 @@ class CRTrackTestDataset(Dataset):
     def _prepare_metas(self):
         csv_files, use_selected = self._select_csv_files()
 
-        dropped_for_missing_rgb = 0
         dropped_for_empty_view_frames = 0
 
         for csv_path in csv_files:
@@ -168,9 +167,19 @@ class CRTrackTestDataset(Dataset):
                         )
                         continue
 
-                    # Optional strict check: all views must have RGB-backed frames.
-                    if self.strict_rgb_check and not all(len(frame_ids_per_view[v]) > 0 for v in self.VIEW_NAMES):
-                        dropped_for_missing_rgb += 1
+                    shared_frame_ids = sorted(
+                        set(frame_ids_per_view["view1"])
+                        .intersection(frame_ids_per_view["view2"])
+                        .intersection(frame_ids_per_view["view3"])
+                    )
+                    if len(shared_frame_ids) == 0:
+                        dropped_for_empty_view_frames += 1
+                        LOGGER.warning(
+                            "Drop sample %s/%s row=%s: no shared frame ids across 3 views.",
+                            scene,
+                            clip,
+                            row.get("id", "unknown"),
+                        )
                         continue
 
                     self.metas.append(
@@ -184,13 +193,12 @@ class CRTrackTestDataset(Dataset):
                                 "view3": int(row["view3"]),
                             },
                             "frame_ids_per_view": frame_ids_per_view,
+                            "shared_frame_ids": shared_frame_ids,
                             "view_texts": view_texts,
                             "view_pkls": {k: str(v) for k, v in view_pkls.items()},
                         }
                     )
 
-        if dropped_for_missing_rgb > 0:
-            LOGGER.warning("Dropped %d sample(s) due to missing real RGB frames.", dropped_for_missing_rgb)
         if dropped_for_empty_view_frames > 0:
             LOGGER.warning("Dropped %d sample(s) due to empty per-view frame ids.", dropped_for_empty_view_frames)
 
@@ -380,23 +388,23 @@ class CRTrackTestDataset(Dataset):
         while not instance_check:
             meta = self.metas[idx]
 
+            shared_frame_ids = meta["shared_frame_ids"]
+            if len(shared_frame_ids) == 0:
+                idx = random.randint(0, self.__len__() - 1)
+                continue
+
+            center_pos = random.randint(0, len(shared_frame_ids) - 1)
+            sample_pos = FrameSampler.sample_global_frames(center_pos, len(shared_frame_ids), self.num_frames)
+            sample_frame_ids = [shared_frame_ids[p] for p in sample_pos]
+
             view_imgs, view_targets = [], []
             missing_rgb = False
             for view_name in self.VIEW_NAMES:
-                frame_ids = meta["frame_ids_per_view"][view_name]
-                if len(frame_ids) == 0:
-                    missing_rgb = True
-                    break
-
-                center_pos = random.randint(0, len(frame_ids) - 1)
-                sample_pos = FrameSampler.sample_global_frames(center_pos, len(frame_ids), self.num_frames)
-                sample_frame_ids = [frame_ids[p] for p in sample_pos]
-
                 imgs, target = self._build_single_view_sample(meta, sample_frame_ids, view_name, idx)
                 if imgs is None:
                     missing_rgb = True
                     LOGGER.warning(
-                        "Skip sample %s/%s (%s): missing RGB frame in selected window %s.",
+                        "Skip sample %s/%s (%s): missing RGB frame in selected shared window %s.",
                         meta["scene"],
                         meta["clip"],
                         view_name,

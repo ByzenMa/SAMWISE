@@ -144,16 +144,13 @@ def generate_crtrack_preview(
     col_titles = ["Original (Real RGB)", "+Mask", "+BBox"]
     view_names = dataset.VIEW_NAMES
 
-    # pick one aligned position across views so frame indices correspond by order.
-    # this avoids each view choosing an unrelated random frame.
-    min_len = min(len(meta["frame_ids_per_view"][v]) for v in view_names)
-    if min_len == 0:
-        raise RuntimeError("Invalid sample: at least one view has zero frames after filtering.")
-    aligned_pos = random.randrange(min_len)
+    shared_frame_ids = meta.get("shared_frame_ids", None)
+    if shared_frame_ids is None or len(shared_frame_ids) == 0:
+        raise RuntimeError("Invalid sample: no shared frame ids across 3 views.")
+    frame_id = random.choice(shared_frame_ids)
 
     rows = []
     for view_name in view_names:
-        frame_id = meta["frame_ids_per_view"][view_name][aligned_pos]
         original, mask, box = _build_real_view_frame_and_ann(dataset, meta, view_name, frame_id)
         with_mask = _overlay_mask(original, mask)
         with_box = _draw_bbox(original, box)

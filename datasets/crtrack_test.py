@@ -30,11 +30,12 @@ class CRTrackTestDataset(Dataset):
     VIEW_NAMES = ("view1", "view2", "view3")
     IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
-    def __init__(self, root: Path, transforms, num_frames: int, strict_rgb_check: bool = True):
+    def __init__(self, root: Path, transforms, num_frames: int, strict_rgb_check: bool = True, scene_filter: str = "all"):
         self.root = Path(root)
         self._transforms = transforms
         self.num_frames = num_frames
         self.strict_rgb_check = strict_rgb_check
+        self.scene_filter = str(scene_filter).strip()
 
         self.images_root = self.root / "images" / "train"
         self.cross_view_root = self.root / "ids_with_text_cross_view"
@@ -43,7 +44,9 @@ class CRTrackTestDataset(Dataset):
         self.metas = []
         self.view_data_cache = {}
         self.rgb_index_cache = {}
+        self.pid_to_label = {}
         self._prepare_metas()
+        self.num_pid_classes = len(self.pid_to_label)
 
         print("\n clip num: ", len(self.metas))
         print("\n")
@@ -115,6 +118,8 @@ class CRTrackTestDataset(Dataset):
 
         for csv_path in csv_files:
             scene, clip = self._extract_scene_clip(csv_path, use_selected)
+            if self.scene_filter.lower() != "all" and scene != self.scene_filter:
+                continue
             pkl_dir = self.images_root / scene / clip
 
             view_pkls = {
@@ -182,11 +187,28 @@ class CRTrackTestDataset(Dataset):
                         )
                         continue
 
+                    try:
+                        object_id = int(row.get("id"))
+                    except (TypeError, ValueError):
+                        LOGGER.warning(
+                            "Drop sample %s/%s row=%s: invalid object id in csv.",
+                            scene,
+                            clip,
+                            row.get("id", "unknown"),
+                        )
+                        continue
+
+                    if object_id not in self.pid_to_label:
+                        self.pid_to_label[object_id] = len(self.pid_to_label)
+
                     self.metas.append(
                         {
                             "scene": scene,
                             "clip": clip,
                             "caption": caption,
+                            "object_id": object_id,
+                            "pid_raw": object_id,
+                            "pid": self.pid_to_label[object_id],
                             "view_obj_ids": {
                                 "view1": int(row["view1"]),
                                 "view2": int(row["view2"]),
@@ -261,6 +283,12 @@ class CRTrackTestDataset(Dataset):
         if "view3" in lower_name:
             return "view3"
         return None
+
+
+    @staticmethod
+    def _view_name_to_camid(view_name):
+        mapping = {"view1": 0, "view2": 1, "view3": 2}
+        return mapping.get(str(view_name).lower(), 0)
 
     @staticmethod
     def _extract_last_int_token(stem):
@@ -372,8 +400,15 @@ class CRTrackTestDataset(Dataset):
             "size": torch.as_tensor([int(height), int(width)]),
             "video_id": f"{meta['scene']}/{meta['clip']}/{view_name}",
             "exp_id": exp_id,
+            "scene": meta["scene"],
+            "clip": meta["clip"],
+            "object_id": torch.tensor(meta["object_id"], dtype=torch.long),
+            "pid_raw": torch.tensor(meta["pid_raw"], dtype=torch.long),
             "view_name": view_name,
             "view_text": meta.get("view_texts", {}).get(view_name, ""),
+            "pid": torch.tensor(meta["pid"], dtype=torch.long),
+            "tid": torch.tensor(obj_id, dtype=torch.long),
+            "camid": torch.tensor(self._view_name_to_camid(view_name), dtype=torch.long),
         }
 
         imgs, target = self._transforms(imgs, target)
@@ -441,5 +476,6 @@ def build(image_set, args):
         transforms=make_coco_transforms(transforms_set, max_size=args.max_size, resize=args.augm_resize),
         num_frames=args.num_frames,
         strict_rgb_check=True,
+        scene_filter=getattr(args, "crtrack_scene", "all"),
     )
     return dataset

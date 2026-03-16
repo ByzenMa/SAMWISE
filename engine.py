@@ -13,7 +13,41 @@ from tools.metrics import calculate_precision_at_k_and_iou_metrics
 import util.misc as utils
 from torch.nn import functional as F
 from models.segmentation import loss_masks
-from models.reid import reid_cluster_loss, build_reid_labels_from_targets
+
+
+def _build_reid_batch_inputs(view_samples, view_targets, device):
+    # flatten three views and use dataset-provided pid/tid/camid definitions
+    imgs, pids, cam_ids, tids, timestamps = [], [], [], [], []
+
+    batch_size = len(view_targets[0])
+
+    for b in range(batch_size):
+        for view_idx in range(len(view_samples)):
+            video_tensor = view_samples[view_idx].tensors[b]  # [T, C, H, W]
+            target = view_targets[view_idx][b]
+            frame_ids = target["frames_idx"]
+            frame_count = int(frame_ids.numel())
+
+            pid = int(target["pid"].item()) if hasattr(target["pid"], "item") else int(target["pid"])
+            tid = int(target["tid"].item()) if hasattr(target["tid"], "item") else int(target["tid"])
+            cam_id = int(target["camid"].item()) if hasattr(target["camid"], "item") else int(target["camid"])
+
+            for t in range(frame_count):
+                imgs.append(video_tensor[t])
+                pids.append(pid)
+                cam_ids.append(cam_id)
+                tids.append(tid)
+                timestamps.append(int(frame_ids[t].item()) if hasattr(frame_ids[t], "item") else int(frame_ids[t]))
+
+    x = torch.stack(imgs, dim=0).to(device)
+    return {
+        "images": x,
+        "pids": torch.tensor(pids, dtype=torch.long, device=device),
+        "cam_ids": torch.tensor(cam_ids, dtype=torch.long, device=device),
+        "tids": torch.tensor(tids, dtype=torch.long, device=device),
+        "timestamps": torch.tensor(timestamps, dtype=torch.float, device=device),
+    }
+
 
 
 def train_one_epoch(model: torch.nn.Module,
@@ -63,10 +97,24 @@ def train_one_epoch(model: torch.nn.Module,
                     else:
                         losses[k] = v
             if reid_model is not None:
-                view_samples_device = [vs.to(device) for vs in samples]
-                mv_embeddings = reid_model(view_samples_device)
-                labels = build_reid_labels_from_targets(targets[0]).to(device)
-                losses["reid_loss"] = reid_cluster_loss(mv_embeddings, labels)
+                reid_inputs = _build_reid_batch_inputs(samples, targets, device)
+                reid_outputs = reid_model(
+                    reid_inputs["images"],
+                    reid_inputs["cam_ids"],
+                    reid_inputs["timestamps"],
+                )
+                reid_loss_dict = reid_model.compute_loss(
+                    outputs=reid_outputs,
+                    pids=reid_inputs["pids"],
+                    cam_ids=reid_inputs["cam_ids"],
+                    tids=reid_inputs["tids"],
+                    timestamps=reid_inputs["timestamps"],
+                )
+
+                losses.update({f"reid_{k}": v for k, v in reid_loss_dict.items() if k != "loss"})
+                losses["samwise_loss"] = sum(losses[k] for k in list(losses.keys()) if not k.startswith("reid_"))
+                losses["reid_loss"] = reid_loss_dict["loss"]
+                losses["loss"] = args.samwise_loss_weight * losses["samwise_loss"] + args.reid_loss_weight * losses["reid_loss"]
         else:
             samples = samples.to(device)
             captions = [t["caption"] for t in targets]
@@ -82,7 +130,7 @@ def train_one_epoch(model: torch.nn.Module,
                 losses.update({"CME_loss": CME_loss if not CME_loss.isnan() else torch.tensor(0).to(device)})
 
         loss_dict = losses
-        losses = sum(loss_dict[k] for k in loss_dict.keys())
+        losses = loss_dict.get("loss", sum(loss_dict[k] for k in loss_dict.keys()))
         # reduce losses over all GPUs for logging purposes
         loss_dict_reduced = utils.reduce_dict(loss_dict)
         loss_dict_reduced_unscaled = {f'{k}_unscaled': v
